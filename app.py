@@ -13,6 +13,7 @@ from reports import FinancialReports
 from datetime import datetime, date
 from decimal import Decimal
 from functools import wraps
+from blueprints.member_routes import members_bp
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -23,6 +24,8 @@ db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+app.register_blueprint(members_bp)
 
 @login_manager.user_loader
 def load_user(user_id):

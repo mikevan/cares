@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Organization Settings{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Organization Settings</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <h5 class="mb-3">Organization Information</h5>
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="name" class="form-label">Organization Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ org.name if org else '' }}" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="ein" class="form-label">EIN (Tax ID)</label>
+                    <input type="text" class="form-control" id="ein" name="ein" value="{{ org.ein if org else '' }}">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="address" class="form-label">Address</label>
+                <input type="text" class="form-control" id="address" name="address" value="{{ org.address if org else '' }}">
+            </div>
+            
+            <div class="row">
+                <div class="col-md-5 mb-3">
+                    <label for="city" class="form-label">City</label>
+                    <input type="text" class="form-control" id="city" name="city" value="{{ org.city if org else '' }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="state" class="form-label">State</label>
+                    <input type="text" class="form-control" id="state" name="state" value="{{ org.state if org else '' }}" maxlength="2">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="zip_code" class="form-label">ZIP Code</label>
+                    <input type="text" class="form-control" id="zip_code" name="zip_code" value="{{ org.zip_code if org else '' }}">
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" value="{{ org.phone if org else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ org.email if org else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="website" class="form-label">Website</label>
+                    <input type="url" class="form-control" id="website" name="website" value="{{ org.website if org else '' }}">
+                </div>
+            </div>
+            
+            <h5 class="mt-4 mb-3">Fiscal Year</h5>
+            <div class="col-md-4 mb-3">
+                <label for="fiscal_year_start" class="form-label">Fiscal Year Start Month</label>
+                <select class="form-select" id="fiscal_year_start" name="fiscal_year_start">
+                    {% for month in range(1, 13) %}
+                    <option value="{{ month }}" {{ 'selected' if org and org.fiscal_year_start == month else '' }}>
+                        {{ ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][month-1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <a href="/" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

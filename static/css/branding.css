@@ -1,0 +1,410 @@
+/*
+ * BRANDING.CSS
+ * Knights of Columbus Official Color Scheme
+ * 
+ * This file contains the brand colors and styling for the organization.
+ * To rebrand for another organization, simply update the CSS variables
+ * in the :root section below.
+ * 
+ * Official Knights of Columbus Colors:
+ * - Gold/Yellow: #FAA514 (Pantone PMS 137 C) - Symbol of riches through hard work
+ * - Oxford Blue: #003595 (Pantone PMS 661 C) - Hope, calm tranquility
+ * - Red: #FE0000 - Courage, valor, giving of one's self
+ * - White: #FFFFFF - Nobility of purpose, purity
+ */
+
+:root {
+    /* Primary Brand Colors */
+    --brand-primary: #003595;        /* Oxford Blue - Primary brand color */
+    --brand-secondary: #FAA514;      /* Gold/Yellow - Secondary accent */
+    --brand-accent: #FE0000;         /* Red - Call-to-action, alerts */
+    --brand-light: #FFFFFF;          /* White - Background, text on dark */
+    
+    /* Extended Palette (derived from primary colors) */
+    --brand-primary-light: #1E5BB8;  /* Lighter blue for hovers */
+    --brand-primary-dark: #002366;   /* Darker blue for emphasis */
+    --brand-secondary-light: #FFC04D; /* Lighter gold for hovers */
+    --brand-secondary-dark: #D88C00; /* Darker gold */
+    
+    /* Neutral Colors */
+    --gray-100: #F8F9FA;
+    --gray-200: #E9ECEF;
+    --gray-300: #DEE2E6;
+    --gray-400: #CED4DA;
+    --gray-500: #ADB5BD;
+    --gray-600: #6C757D;
+    --gray-700: #495057;
+    --gray-800: #343A40;
+    --gray-900: #212529;
+    
+    /* Semantic Colors */
+    --success: #28A745;
+    --info: #17A2B8;
+    --warning: #FFC107;
+    --danger: #DC3545;
+    
+    /* Typography */
+    --font-family-primary: 'Arial', 'Helvetica Neue', sans-serif;
+    --font-family-heading: 'Georgia', 'Times New Roman', serif;
+}
+
+/* ============================================
+   PRIMARY NAVIGATION & HEADER
+   ============================================ */
+.navbar-brand {
+    color: var(--brand-light) !important;
+    font-weight: bold;
+}
+
+.navbar.bg-primary {
+    background-color: var(--brand-primary) !important;
+}
+
+.navbar .nav-link {
+    color: var(--brand-light) !important;
+}
+
+.navbar .nav-link:hover {
+    color: var(--brand-secondary) !important;
+}
+
+/* ============================================
+   BUTTONS & INTERACTIVE ELEMENTS
+   ============================================ */
+.btn-primary {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--brand-primary-light);
+    border-color: var(--brand-primary-light);
+}
+
+.btn-secondary {
+    background-color: var(--brand-secondary);
+    border-color: var(--brand-secondary);
+    color: var(--gray-900);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background-color: var(--brand-secondary-dark);
+    border-color: var(--brand-secondary-dark);
+}
+
+.btn-accent {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: var(--brand-light);
+}
+
+.btn-accent:hover,
+.btn-accent:focus {
+    background-color: #CC0000;
+    border-color: #CC0000;
+}
+
+/* ============================================
+   LINKS
+   ============================================ */
+a {
+    color: var(--brand-primary);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--brand-primary-light);
+    text-decoration: underline;
+}
+
+/* ============================================
+   CARDS & PANELS
+   ============================================ */
+.card-header {
+    background-color: var(--brand-primary);
+    color: var(--brand-light);
+    font-weight: bold;
+}
+
+.stat-card {
+    border: 2px solid var(--gray-300);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0, 53, 149, 0.2);
+}
+
+.stat-card .bi {
+    color: var(--brand-primary);
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+.table thead {
+    background-color: var(--brand-primary);
+    color: var(--brand-light);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 53, 149, 0.05);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(250, 165, 20, 0.1);
+}
+
+/* ============================================
+   FORMS
+   ============================================ */
+.form-control:focus {
+    border-color: var(--brand-secondary);
+    box-shadow: 0 0 0 0.2rem rgba(250, 165, 20, 0.25);
+}
+
+.form-label {
+    color: var(--gray-700);
+    font-weight: 600;
+}
+
+/* ============================================
+   ALERTS & NOTIFICATIONS
+   ============================================ */
+.alert-primary {
+    background-color: rgba(0, 53, 149, 0.1);
+    border-color: var(--brand-primary);
+    color: var(--brand-primary-dark);
+}
+
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-color: var(--success);
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-color: var(--danger);
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+.badge-primary {
+    background-color: var(--brand-primary);
+}
+
+.badge-secondary {
+    background-color: var(--brand-secondary);
+    color: var(--gray-900);
+}
+
+.badge-accent {
+    background-color: var(--brand-accent);
+}
+
+/* ============================================
+   FINANCIAL INDICATORS
+   ============================================ */
+.positive {
+    color: var(--success);
+    font-weight: bold;
+}
+
+.negative {
+    color: var(--danger);
+    font-weight: bold;
+}
+
+.neutral {
+    color: var(--gray-600);
+}
+
+/* ============================================
+   PAGE HEADERS & TITLES
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--brand-primary);
+    font-family: var(--font-family-heading);
+}
+
+.page-title {
+    color: var(--brand-primary);
+    border-bottom: 3px solid var(--brand-secondary);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ============================================
+   SIDEBAR & NAVIGATION ELEMENTS
+   ============================================ */
+.sidebar {
+    background-color: var(--gray-100);
+    border-right: 2px solid var(--brand-secondary);
+}
+
+.sidebar .nav-link {
+    color: var(--gray-700);
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: var(--brand-primary);
+    background-color: rgba(0, 53, 149, 0.1);
+}
+
+/* ============================================
+   DASHBOARD STATISTICS
+   ============================================ */
+.dashboard-stat {
+    padding: 1.5rem;
+    border-left: 4px solid var(--brand-secondary);
+    background-color: var(--gray-100);
+}
+
+.dashboard-stat .stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--brand-primary);
+}
+
+.dashboard-stat .stat-label {
+    color: var(--gray-600);
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================
+   PROGRESS BARS
+   ============================================ */
+.progress-bar {
+    background-color: var(--brand-primary);
+}
+
+.progress-bar-secondary {
+    background-color: var(--brand-secondary);
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.footer {
+    background-color: var(--brand-primary);
+    color: var(--brand-light);
+    padding: 2rem 0;
+    margin-top: 3rem;
+}
+
+.footer a {
+    color: var(--brand-secondary);
+}
+
+.footer a:hover {
+    color: var(--brand-secondary-light);
+}
+
+/* ============================================
+   PROJECT-SPECIFIC ELEMENTS
+   ============================================ */
+.project-badge {
+    background-color: var(--brand-secondary);
+    color: var(--gray-900);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.project-leader {
+    border-left: 3px solid var(--brand-accent);
+    padding-left: 0.75rem;
+}
+
+.member-card {
+    border-top: 3px solid var(--brand-primary);
+}
+
+/* ============================================
+   TRANSACTION TYPE INDICATORS
+   ============================================ */
+.transaction-in {
+    color: var(--success);
+}
+
+.transaction-out {
+    color: var(--danger);
+}
+
+.transaction-type-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.transaction-type-badge.in {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: var(--success);
+}
+
+.transaction-type-badge.out {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: var(--danger);
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1rem;
+    }
+    
+    .stat-card h3 {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-stat .stat-value {
+        font-size: 1.75rem;
+    }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+    .navbar,
+    .sidebar,
+    .btn,
+    .no-print {
+        display: none !important;
+    }
+    
+    .page-title {
+        border-bottom-color: var(--gray-800);
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--gray-900);
+    }
+}
+
+/* ============================================
+   CUSTOM LOGO/EMBLEM SPACE
+   ============================================ */
+.organization-logo {
+    max-height: 60px;
+    margin-right: 1rem;
+}
+
+.brand-emblem {
+    /* Space for Knights of Columbus emblem or other organization logo */
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}

@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}New Transaction{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">New Transaction</h1>
+</div>
+
+<!-- Mode Selector -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="mode" id="simpleMode" checked>
+            <label class="btn btn-outline-primary" for="simpleMode" onclick="showSimpleMode()">
+                <i class="bi bi-lightning"></i> Simple Mode (For Non-Accountants)
+            </label>
+            
+            <input type="radio" class="btn-check" name="mode" id="accountantMode">
+            <label class="btn btn-outline-primary" for="accountantMode" onclick="showAccountantMode()">
+                <i class="bi bi-calculator"></i> Accountant Mode (Full Journal Entry)
+            </label>
+        </div>
+    </div>
+</div>
+
+<!-- Simple Mode Form -->
+<div id="simpleModeForm" class="card">
+    <div class="card-header">
+        <h5><i class="bi bi-lightning"></i> Simple Transaction Entry</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" id="simpleForm">
+            <input type="hidden" name="entry_mode" value="simple">
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="transaction_type" class="form-label">Transaction Type *</label>
+                    <select class="form-select" id="transaction_type" name="transaction_type" required>
+                        <option value="">-- Select Transaction Type --</option>
+                        <optgroup label="Money Coming In">
+                            <option value="received_dues">💰 Received Membership Dues</option>
+                            <option value="received_donation">🎁 Received Donation</option>
+                            <option value="received_grant">🏛️ Received Grant</option>
+                        </optgroup>
+                        <optgroup label="Money Going Out">
+                            <option value="paid_vendor">🛒 Paid Vendor/Supplier</option>
+                            <option value="paid_rent">🏢 Paid Rent</option>
+                            <option value="paid_utilities">💡 Paid Utilities</option>
+                            <option value="paid_salary">👤 Paid Salary/Wages</option>
+                        </optgroup>
+                    </select>
+                    <small class="text-muted">Select what type of transaction this is</small>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="amount" class="form-label">Amount ($) *</label>
+                    <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="project_id" class="form-label">Project *</label>
+                    <select class="form-select" id="project_id" name="project_id" required>
+                        <option value="">-- Select Project --</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="entry_date" class="form-label">Date *</label>
+                    <input type="date" class="form-control" id="entry_date" name="entry_date" 
+                           value="{{ date.today().strftime('%Y-%m-%d') }}" required>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Description *</label>
+                <input type="text" class="form-control" id="description" name="description" 
+                       placeholder="e.g., Monthly dues from John Smith" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="reference_number" class="form-label">Reference Number</label>
+                <input type="text" class="form-control" id="reference_number" name="reference_number" 
+                       placeholder="Check #, Invoice #, etc.">
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> <strong>How it works:</strong> 
+                The system automatically creates the proper accounting entries for you. 
+                Just select the transaction type, enter the amount, and describe what it's for!
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="/transactions" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Post Transaction
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Accountant Mode Form -->
+<div id="accountantModeForm" class="card" style="display: none;">
+    <div class="card-header">
+        <h5><i class="bi bi-calculator"></i> Full Journal Entry</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" id="accountantForm">
+            <input type="hidden" name="entry_mode" value="accountant">
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="project_id_acct" class="form-label">Project *</label>
+                    <select class="form-select" id="project_id_acct" name="project_id" required>
+                        <option value="">-- Select Project --</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="entry_date_acct" class="form-label">Date *</label>
+                    <input type="date" class="form-control" id="entry_date_acct" name="entry_date" 
+                           value="{{ date.today().strftime('%Y-%m-%d') }}" required>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description_acct" class="form-label">Description *</label>
+                <input type="text" class="form-control" id="description_acct" name="description" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="reference_number_acct" class="form-label">Reference Number</label>
+                <input type="text" class="form-control" id="reference_number_acct" name="reference_number">
+            </div>
+            
+            <hr>
+            
+            <h6>Journal Entry Lines</h6>
+            <div class="table-responsive">
+                <table class="table" id="journalLines">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Account</th>
+                            <th style="width: 20%;">Debit</th>
+                            <th style="width: 20%;">Credit</th>
+                            <th style="width: 15%;">Memo</th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="linesBody">
+                        <tr class="journal-line">
+                            <td>
+                                <select class="form-select form-select-sm" name="account_id[]" required>
+                                    <option value="">-- Select Account --</option>
+                                    {% for account in accounts %}
+                                    <option value="{{ account.id }}">{{ account.account_number }} - {{ account.account_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm debit-input" name="debit_amount[]" placeholder="0.00"></td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm credit-input" name="credit_amount[]" placeholder="0.00"></td>
+                            <td><input type="text" class="form-control form-control-sm" name="memo[]"></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td><strong>TOTALS:</strong></td>
+                            <td><strong id="totalDebits">$0.00</strong></td>
+                            <td><strong id="totalCredits">$0.00</strong></td>
+                            <td colspan="2">
+                                <span id="balanceStatus" class="badge bg-secondary">Not Balanced</span>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLine()">
+                <i class="bi bi-plus-circle"></i> Add Line
+            </button>
+            
+            <div class="alert alert-warning mt-3">
+                <i class="bi bi-exclamation-triangle"></i> <strong>Double-Entry Accounting:</strong> 
+                Total debits must equal total credits. The system will not allow unbalanced entries.
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                <a href="/transactions" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                    <i class="bi bi-check-circle"></i> Post Journal Entry
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showSimpleMode() {
+    document.getElementById('simpleModeForm').style.display = 'block';
+    document.getElementById('accountantModeForm').style.display = 'none';
+}
+
+function showAccountantMode() {
+    document.getElementById('simpleModeForm').style.display = 'none';
+    document.getElementById('accountantModeForm').style.display = 'block';
+    calculateTotals();
+}
+
+function addLine() {
+    const tbody = document.getElementById('linesBody');
+    const firstRow = tbody.querySelector('.journal-line');
+    const newRow = firstRow.cloneNode(true);
+    
+    // Clear values
+    newRow.querySelectorAll('input, select').forEach(input => {
+        if (input.tagName === 'SELECT') {
+            input.selectedIndex = 0;
+        } else {
+            input.value = '';
+        }
+    });
+    
+    // Add delete button to new row
+    const deleteCell = newRow.querySelector('td:last-child');
+    deleteCell.innerHTML = '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLine(this)"><i class="bi bi-trash"></i></button>';
+    
+    tbody.appendChild(newRow);
+    
+    // Add event listeners
+    newRow.querySelectorAll('.debit-input, .credit-input').forEach(input => {
+        input.addEventListener('input', calculateTotals);
+        input.addEventListener('input', enforceDebitOrCredit);
+    });
+}
+
+function removeLine(btn) {
+    const tbody = document.getElementById('linesBody');
+    if (tbody.querySelectorAll('.journal-line').length > 1) {
+        btn.closest('tr').remove();
+        calculateTotals();
+    }
+}
+
+function enforceDebitOrCredit(e) {
+    const row = e.target.closest('tr');
+    const debitInput = row.querySelector('.debit-input');
+    const creditInput = row.querySelector('.credit-input');
+    
+    if (e.target.classList.contains('debit-input') && parseFloat(e.target.value) > 0) {
+        creditInput.value = '';
+    } else if (e.target.classList.contains('credit-input') && parseFloat(e.target.value) > 0) {
+        debitInput.value = '';
+    }
+}
+
+function calculateTotals() {
+    let totalDebits = 0;
+    let totalCredits = 0;
+    
+    document.querySelectorAll('.debit-input').forEach(input => {
+        totalDebits += parseFloat(input.value) || 0;
+    });
+    
+    document.querySelectorAll('.credit-input').forEach(input => {
+        totalCredits += parseFloat(input.value) || 0;
+    });
+    
+    document.getElementById('totalDebits').textContent = '$' + totalDebits.toFixed(2);
+    document.getElementById('totalCredits').textContent = '$' + totalCredits.toFixed(2);
+    
+    const diff = Math.abs(totalDebits - totalCredits);
+    const balanced = diff < 0.01 && totalDebits > 0;
+    
+    const statusBadge = document.getElementById('balanceStatus');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (balanced) {
+        statusBadge.className = 'badge bg-success';
+        statusBadge.textContent = '✓ Balanced';
+        submitBtn.disabled = false;
+    } else {
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.textContent = '✗ Not Balanced (Diff: $' + diff.toFixed(2) + ')';
+        submitBtn.disabled = true;
+    }
+}
+
+// Add event listeners on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.debit-input, .credit-input').forEach(input => {
+        input.addEventListener('input', calculateTotals);
+        input.addEventListener('input', enforceDebitOrCredit);
+    });
+});
+</script>
+{% endblock %}

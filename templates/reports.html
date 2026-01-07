@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Reports{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Financial Reports</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-bar-graph"></i> Balance Sheet</h5>
+            </div>
+            <div class="card-body">
+                <p>Statement of Financial Position showing assets, liabilities, and net assets.</p>
+                <a href="/reports/balance-sheet" class="btn btn-primary w-100">View Balance Sheet</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-spreadsheet"></i> Income Statement</h5>
+            </div>
+            <div class="card-body">
+                <p>Statement of Activities showing revenue, expenses, and net income.</p>
+                <a href="/reports/income-statement" class="btn btn-success w-100">View Income Statement</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-cash-coin"></i> Cash Flow</h5>
+            </div>
+            <div class="card-body">
+                <p>Statement of Cash Flows showing operating, investing, and financing activities.</p>
+                <a href="/reports/cash-flow" class="btn btn-info w-100">View Cash Flow</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> About These Reports</h5>
+    </div>
+    <div class="card-body">
+        <p>All financial reports are generated in compliance with <strong>FASB ASC 958</strong> standards for not-for-profit organizations.</p>
+        <ul>
+            <li><strong>Balance Sheet:</strong> Shows your organization's financial position at a specific point in time</li>
+            <li><strong>Income Statement:</strong> Shows revenue and expenses for a period (typically one year)</li>
+            <li><strong>Cash Flow Statement:</strong> Shows how cash moved in and out of the organization</li>
+        </ul>
+        <p class="mb-0">These reports are suitable for grant applications, board meetings, and tax reporting.</p>
+    </div>
+</div>
+{% endblock %}

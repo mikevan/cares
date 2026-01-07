@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Balance Sheet{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Statement of Financial Position</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="text-center">{{ data.organization }}</h4>
+        <h5 class="text-center text-muted">Statement of Financial Position</h5>
+        <p class="text-center">As of {{ data.as_of_date }}</p>
+        
+        <hr>
+        
+        <h5>ASSETS</h5>
+        <table class="table">
+            {% for account in data.assets.accounts %}
+            <tr>
+                <td>{{ account.name }}</td>
+                <td class="text-end">${{ "%.2f"|format(account.balance) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="table-primary fw-bold">
+                <td>TOTAL ASSETS</td>
+                <td class="text-end">${{ "%.2f"|format(data.assets.total) }}</td>
+            </tr>
+        </table>
+        
+        <h5 class="mt-4">LIABILITIES</h5>
+        <table class="table">
+            {% for account in data.liabilities.accounts %}
+            <tr>
+                <td>{{ account.name }}</td>
+                <td class="text-end">${{ "%.2f"|format(account.balance) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="table-primary fw-bold">
+                <td>TOTAL LIABILITIES</td>
+                <td class="text-end">${{ "%.2f"|format(data.liabilities.total) }}</td>
+            </tr>
+        </table>
+        
+        <h5 class="mt-4">NET ASSETS</h5>
+        <table class="table">
+            {% for account in data.net_assets.accounts %}
+            <tr>
+                <td>{{ account.name }}</td>
+                <td class="text-end">${{ "%.2f"|format(account.balance) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="table-primary fw-bold">
+                <td>TOTAL NET ASSETS</td>
+                <td class="text-end">${{ "%.2f"|format(data.net_assets.total) }}</td>
+            </tr>
+        </table>
+        
+        <table class="table table-dark mt-4">
+            <tr class="fw-bold">
+                <td>TOTAL LIABILITIES AND NET ASSETS</td>
+                <td class="text-end">${{ "%.2f"|format(data.total_liabilities_and_net_assets) }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% endblock %}

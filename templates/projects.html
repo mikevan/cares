@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Projects</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="/projects/new" class="btn btn-primary"><i class="bi bi-folder-plus"></i> New Project</a>
+    </div>
+</div>
+
+<div class="row">
+    {% for project in projects %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">{{ project.name }}</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ project.description or 'No description' }}</p>
+                <p class="mb-1"><strong>Budget:</strong> ${{ "%.2f"|format(project.budget or 0) }}</p>
+                <p class="mb-1"><strong>Status:</strong> 
+                    {% if project.status == 'Active' %}
+                    <span class="badge bg-success">Active</span>
+                    {% elif project.status == 'Completed' %}
+                    <span class="badge bg-secondary">Completed</span>
+                    {% else %}
+                    <span class="badge bg-warning">{{ project.status }}</span>
+                    {% endif %}
+                </p>
+                <p class="mb-1"><strong>Volunteers:</strong> {{ project.volunteers|length }}</p>
+                <p class="mb-3"><strong>Leaders:</strong> {{ project.leaders|length }}</p>
+                <a href="/projects/{{ project.id }}/edit" class="btn btn-sm btn-outline-primary">Edit</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <p class="text-muted">No projects found. <a href="/projects/new">Create your first project</a>.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

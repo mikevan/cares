@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Knights of Columbus Accounting{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="/members/new" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-plus"></i> Add Member</a>
+            <a href="/projects/new" class="btn btn-sm btn-outline-secondary"><i class="bi bi-folder-plus"></i> New Project</a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="bi bi-people fs-1 text-primary"></i>
+                <h3 class="mt-2">{{ member_count }}</h3>
+                <p class="text-muted">Active Members</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="bi bi-folder fs-1 text-info"></i>
+                <h3 class="mt-2">{{ project_count }}</h3>
+                <p class="text-muted">Active Projects</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="bi bi-cash-stack fs-1 text-success"></i>
+                <h3 class="mt-2 {{ 'positive' if cash_balance >= 0 else 'negative' }}">${{ "%.2f"|format(cash_balance) }}</h3>
+                <p class="text-muted">Cash Balance</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> Recent Transactions</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Project</th>
+                                <th>Reference</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr style="cursor: pointer;" onclick="window.location='/transactions/{{ transaction.id }}';">
+                                <td>{{ transaction.entry_date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ transaction.description }}</td>
+                                <td><span class="badge bg-secondary">{{ transaction.project.name }}</span></td>
+                                <td>{{ transaction.reference_number or '-' }}</td>
+                                <td>
+                                    {% if transaction.status == 'Posted' %}
+                                    <span class="badge bg-success">Posted</span>
+                                    {% elif transaction.status == 'Draft' %}
+                                    <span class="badge bg-warning">Draft</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Voided</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <a href="/transactions" class="btn btn-primary btn-sm">View All Transactions</a>
+                {% else %}
+                <p class="text-muted">No transactions recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-graph-up"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="/reports/balance-sheet" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                    <i class="bi bi-file-earmark-bar-graph"></i> View Balance Sheet
+                </a>
+                <a href="/reports/income-statement" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> View Income Statement
+                </a>
+                <a href="/reports/cash-flow" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-cash-coin"></i> View Cash Flow Statement
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> System Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>User:</strong> {{ current_user.username }}</p>
+                <p><strong>Role:</strong> <span class="badge bg-primary">{{ current_user.role }}</span></p>
+                <p><strong>Organization:</strong> {{ current_user.organization.name }}</p>
+                <p class="mb-0"><strong>Fiscal Year Starts:</strong> Month {{ current_user.organization.fiscal_year_start }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

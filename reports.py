@@ -4,7 +4,7 @@ Generates FASB ASC 958 compliant financial statements
 """
 from models import JournalEntry, JournalEntryLine, ChartOfAccounts, Organization
 from sqlalchemy import func, and_
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 
@@ -227,7 +227,7 @@ class FinancialReports:
         
         # Beginning cash balance
         beginning_cash = sum(
-            self.get_account_balance(acc.account_number, start_date - datetime.timedelta(days=1))
+            self.get_account_balance(acc.account_number, start_date - timedelta(days=1))
             for acc in cash_accounts
         )
         

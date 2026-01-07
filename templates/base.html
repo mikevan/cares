@@ -29,10 +29,10 @@
                         <i class="bi bi-people"></i> Members
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="membersDropdown">
-                        <li><a class="dropdown-item" href="{{ url_for('members') }}">
+                        <li><a class="dropdown-item" href="{{ url_for('members.list') }}">
                             <i class="bi bi-list"></i> View Members
                         </a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('member.new') }}">
+                        <li><a class="dropdown-item" href="{{ url_for('members.new') }}">
                             <i class="bi bi-person-plus"></i> Add Member
                         </a></li>
                         <li><hr class="dropdown-divider"></li>

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if user else 'New' }} User{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ 'Edit' if user else 'New' }} User</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="username" 
+                               name="username" 
+                               value="{{ user.username if user else '' }}" 
+                               required
+                               {% if user %}readonly{% endif %}>
+                        <small class="text-muted">
+                            {% if user %}
+                            Username cannot be changed after creation
+                            {% else %}
+                            Must be unique. Use lowercase letters and numbers only.
+                            {% endif %}
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="email" 
+                               name="email" 
+                               value="{{ user.email if user else '' }}" 
+                               required>
+                        <small class="text-muted">Must be unique. Used for account recovery.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role *</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="">-- Select Role --</option>
+                            <option value="Admin" {{ 'selected' if user and user.role == 'Admin' else '' }}>
+                                Administrator - Full system access
+                            </option>
+                            <option value="Treasurer" {{ 'selected' if user and user.role == 'Treasurer' else '' }}>
+                                Treasurer - Financial operations only
+                            </option>
+                            <option value="ProjectLeader" {{ 'selected' if user and user.role == 'ProjectLeader' else '' }}>
+                                Project Leader - Limited to assigned projects
+                            </option>
+                            <option value="Member" {{ 'selected' if user and user.role == 'Member' else '' }}>
+                                Member - View-only access
+                            </option>
+                        </select>
+                    </div>
+                    
+                    {% if user %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="active" 
+                                   name="active" 
+                                   {{ 'checked' if user.active else '' }}>
+                            <label class="form-check-label" for="active">
+                                Active Account
+                            </label>
+                            <small class="form-text text-muted d-block">
+                                Inactive users cannot log in to the system.
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if not user %}
+                    <hr class="my-4">
+                    <h5>Set Password</h5>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password *</label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="password" 
+                               name="password" 
+                               required
+                               minlength="8">
+                        <small class="text-muted">Minimum 8 characters</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password_confirm" class="form-label">Confirm Password *</label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="password_confirm" 
+                               name="password_confirm" 
+                               required
+                               minlength="8">
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('users.list') }}" class="btn btn-secondary">Cancel</a>
+                        {% if user %}
+                        <a href="{{ url_for('users.change_password', id=user.id) }}" class="btn btn-warning">
+                            <i class="bi bi-key"></i> Change Password
+                        </a>
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> {{ 'Update' if user else 'Create' }} User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-shield-check"></i> Security Tips
+            </div>
+            <div class="card-body">
+                <h6>Password Requirements:</h6>
+                <ul class="small">
+                    <li>Minimum 8 characters</li>
+                    <li>Mix of letters and numbers recommended</li>
+                    <li>Avoid common words</li>
+                    <li>Change passwords regularly</li>
+                </ul>
+                
+                <h6 class="mt-3">Role Selection:</h6>
+                <p class="small">Choose the minimum role needed for the user's responsibilities. You can always upgrade later.</p>
+                
+                {% if user %}
+                <div class="alert alert-warning small mt-3">
+                    <strong>Note:</strong> Deactivating a user will immediately log them out and prevent future logins. Use this instead of deletion to preserve audit trails.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not user %}
+<script>
+// Real-time password match validation
+document.getElementById('password_confirm').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirm = this.value;
+    
+    if (confirm && password !== confirm) {
+        this.setCustomValidity('Passwords do not match');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

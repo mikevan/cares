@@ -23,68 +23,101 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/"><i class="bi bi-speedometer2"></i> Dashboard</a>
                     </li>
-					                <!-- Members Dropdown -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="membersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-people"></i> Members
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="membersDropdown">
-                        <li><a class="dropdown-item" href="{{ url_for('members.list') }}">
-                            <i class="bi bi-list"></i> View Members
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('members.new') }}">
-                            <i class="bi bi-person-plus"></i> Add Member
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('import_members') }}">
-                            <i class="bi bi-upload"></i> Import Members
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('export_members') }}">
-                            <i class="bi bi-download"></i> Export Members
-                        </a></li>
-                    </ul>
-                </li>
+					
+                    <!-- Members Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="membersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-people"></i> Members
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="membersDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('members.list') }}">
+                                <i class="bi bi-list"></i> View Members
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('members.new') }}">
+                                <i class="bi bi-person-plus"></i> Add Member
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('import_members') }}">
+                                <i class="bi bi-upload"></i> Import Members
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('export_members') }}">
+                                <i class="bi bi-download"></i> Export Members
+                            </a></li>
+                        </ul>
+                    </li>
 
-                <!-- Projects Dropdown -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="projectsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-kanban"></i> Projects
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="projectsDropdown">
-                        <li><a class="dropdown-item" href="{{ url_for('projects') }}">
-                            <i class="bi bi-list"></i> View Projects
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('project_new') }}">
-                            <i class="bi bi-plus-circle"></i> Add Project
-                        </a></li>
-                    </ul>
-                </li>
+                    <!-- Projects Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="projectsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-kanban"></i> Projects
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="projectsDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('projects') }}">
+                                <i class="bi bi-list"></i> View Projects
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('project_new') }}">
+                                <i class="bi bi-plus-circle"></i> Add Project
+                            </a></li>
+                        </ul>
+                    </li>
 
-                <!-- Transactions Dropdown -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="transactionsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-cash-coin"></i> Transactions
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="transactionsDropdown">
-                        <li><a class="dropdown-item" href="{{ url_for('transactions') }}">
-                            <i class="bi bi-list"></i> View Transactions
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('transaction_new') }}">
-                            <i class="bi bi-plus-circle"></i> New Transaction
-                        </a></li>
-                    </ul>
-                </li>
+                    <!-- Transactions Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="transactionsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-cash-coin"></i> Transactions
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="transactionsDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('transactions') }}">
+                                <i class="bi bi-list"></i> View Transactions
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('transaction_new') }}">
+                                <i class="bi bi-plus-circle"></i> New Transaction
+                            </a></li>
+                        </ul>
+                    </li>
 
                     <li class="nav-item">
                         <a class="nav-link" href="/reports"><i class="bi bi-file-earmark-text"></i> Reports</a>
                     </li>
+                    
                     {% if current_user.role == 'Admin' %}
+                    <!-- Users Dropdown (Admin Only) -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-gear"></i> Users
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="usersDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('users.list') }}">
+                                <i class="bi bi-list"></i> Manage Users
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('users.new') }}">
+                                <i class="bi bi-person-plus"></i> Add User
+                            </a></li>
+                        </ul>
+                    </li>
+                    
                     <li class="nav-item">
                         <a class="nav-link" href="/settings"><i class="bi bi-gear"></i> Settings</a>
                     </li>
                     {% endif %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                    
+                    <!-- User Profile Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('users.profile') }}">
+                                <i class="bi bi-person"></i> My Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('users.change_password', id=current_user.id) }}">
+                                <i class="bi bi-key"></i> Change Password
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -98,7 +131,7 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show mt-3" role="alert">
+                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show mt-3" role="alert">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>

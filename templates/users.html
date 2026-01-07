@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">User Management</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('users.new') }}" class="btn btn-primary">
+            <i class="bi bi-person-plus"></i> Add User
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <strong>{{ user.username }}</strong>
+                            {% if user.id == current_user.id %}
+                            <span class="badge bg-info">You</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.email or '-' }}</td>
+                        <td>
+                            {% if user.role == 'Admin' %}
+                            <span class="badge bg-danger">Admin</span>
+                            {% elif user.role == 'Treasurer' %}
+                            <span class="badge bg-warning text-dark">Treasurer</span>
+                            {% elif user.role == 'ProjectLeader' %}
+                            <span class="badge bg-primary">Project Leader</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ user.role }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.last_login %}
+                            {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                            <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('users.edit', id=user.id) }}" 
+                                   class="btn btn-outline-primary" 
+                                   title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                
+                                <a href="{{ url_for('users.change_password', id=user.id) }}" 
+                                   class="btn btn-outline-warning" 
+                                   title="Change Password">
+                                    <i class="bi bi-key"></i>
+                                </a>
+                                
+                                {% if user.id != current_user.id %}
+                                <form method="POST" 
+                                      action="{{ url_for('users.toggle_active', id=user.id) }}" 
+                                      style="display:inline;">
+                                    <button type="submit" 
+                                            class="btn btn-outline-{{ 'secondary' if user.active else 'success' }}" 
+                                            title="{{ 'Deactivate' if user.active else 'Activate' }}">
+                                        <i class="bi bi-{{ 'pause-circle' if user.active else 'play-circle' }}"></i>
+                                    </button>
+                                </form>
+                                
+                                <form method="POST" 
+                                      action="{{ url_for('users.delete', id=user.id) }}" 
+                                      style="display:inline;"
+                                      onsubmit="return confirm('Delete user {{ user.username }}? This cannot be undone.');">
+                                    <button type="submit" 
+                                            class="btn btn-outline-danger" 
+                                            title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No users found. <a href="{{ url_for('users.new') }}">Create the first user</a>.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle"></i> User Roles
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6><span class="badge bg-danger">Admin</span> Administrator</h6>
+                <ul class="small">
+                    <li>Full system access</li>
+                    <li>User management</li>
+                    <li>Organization settings</li>
+                    <li>All financial operations</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6><span class="badge bg-warning text-dark">Treasurer</span> Treasurer</h6>
+                <ul class="small">
+                    <li>View all financial data</li>
+                    <li>Post transactions</li>
+                    <li>Generate reports</li>
+                    <li>Cannot manage users</li>
+                </ul>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <h6><span class="badge bg-primary">ProjectLeader</span> Project Leader</h6>
+                <ul class="small">
+                    <li>View assigned projects</li>
+                    <li>Submit expense requests</li>
+                    <li>View project budgets</li>
+                    <li>Cannot post transactions</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6><span class="badge bg-secondary">Member</span> Member (View-Only)</h6>
+                <ul class="small">
+                    <li>View dashboard</li>
+                    <li>View personal information</li>
+                    <li>View project rosters</li>
+                    <li>No financial access</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

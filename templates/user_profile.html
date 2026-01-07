@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">My Profile</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('users.change_password', id=current_user.id) }}" class="btn btn-warning">
+            <i class="bi bi-key"></i> Change Password
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-person-circle"></i> Account Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Username:</strong>
+                    </div>
+                    <div class="col-md-8">
+                        {{ user.username }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Email:</strong>
+                    </div>
+                    <div class="col-md-8">
+                        {{ user.email }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Role:</strong>
+                    </div>
+                    <div class="col-md-8">
+                        {% if user.role == 'Admin' %}
+                        <span class="badge bg-danger">Administrator</span>
+                        {% elif user.role == 'Treasurer' %}
+                        <span class="badge bg-warning text-dark">Treasurer</span>
+                        {% elif user.role == 'ProjectLeader' %}
+                        <span class="badge bg-primary">Project Leader</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ user.role }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Organization:</strong>
+                    </div>
+                    <div class="col-md-8">
+                        {{ user.organization.name }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Account Status:</strong>
+                    </div>
+                    <div class="col-md-8">
+                        {% if user.active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Account Created:</strong>
+                    </div>
+                    <div class="col-md-8">
+                        {{ user.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Last Login:</strong>
+                    </div>
+                    <div class="col-md-8">
+                        {% if user.last_login %}
+                        {{ user.last_login.strftime('%B %d, %Y at %I:%M %p') }}
+                        {% else %}
+                        <span class="text-muted">Never logged in</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    To update your email or other information, please contact your system administrator.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-shield-check"></i> Your Permissions
+            </div>
+            <div class="card-body">
+                <h6>{{ user.role }} Role</h6>
+                <p class="small">As a {{ user.role }}, you can:</p>
+                
+                {% if user.role == 'Admin' %}
+                <ul class="small">
+                    <li>Full system access</li>
+                    <li>Manage users</li>
+                    <li>Configure organization settings</li>
+                    <li>All financial operations</li>
+                    <li>Generate all reports</li>
+                </ul>
+                {% elif user.role == 'Treasurer' %}
+                <ul class="small">
+                    <li>View all financial data</li>
+                    <li>Post transactions</li>
+                    <li>Reconcile accounts</li>
+                    <li>Generate financial reports</li>
+                    <li>Manage members and projects</li>
+                </ul>
+                {% elif user.role == 'ProjectLeader' %}
+                <ul class="small">
+                    <li>View assigned projects</li>
+                    <li>Submit expense requests</li>
+                    <li>View project budgets</li>
+                    <li>View project member lists</li>
+                </ul>
+                {% else %}
+                <ul class="small">
+                    <li>View dashboard</li>
+                    <li>View personal information</li>
+                    <li>View project rosters</li>
+                    <li>View public announcements</li>
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-shield-lock"></i> Security
+            </div>
+            <div class="card-body">
+                <p class="small mb-2"><strong>Password Security:</strong></p>
+                <ul class="small">
+                    <li>Change your password regularly</li>
+                    <li>Never share your password</li>
+                    <li>Use a unique password for this system</li>
+                    <li>Log out when finished</li>
+                </ul>
+                
+                <a href="{{ url_for('users.change_password', id=user.id) }}" class="btn btn-sm btn-warning w-100 mt-2">
+                    <i class="bi bi-key"></i> Change Password
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

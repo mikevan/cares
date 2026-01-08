@@ -27,7 +27,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 app.register_blueprint(members_bp)
-app.register_blueprint(users_bp)
+app.register_blueprint(users_bp) 
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -901,18 +901,6 @@ def cash_flow():
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.cash_flow_statement(start_date, end_date)
     return render_template('cash_flow.html', data=data, year=year)
-
-
-@app.route('/reports/functional-expenses')
-@login_required
-def functional_expenses():
-    year = request.args.get('year', date.today().year, type=int)
-    start_date = f'{year}-01-01'
-    end_date = f'{year}-12-31'
-    
-    reports = FinancialReports(db.session, current_user.organization_id)
-    data = reports.functional_expenses(start_date, end_date)
-    return render_template('functional_expenses.html', data=data, year=year)
 
 
 # ==================== SETTINGS ====================

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Statement of Functional Expenses{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Statement of Functional Expenses</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="text-center">{{ data.organization }}</h4>
+        <h5 class="text-center text-muted">Statement of Functional Expenses</h5>
+        <p class="text-center">{{ data.period }}</p>
+        
+        <hr>
+        
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> <strong>FASB ASC 958 Requirement:</strong> 
+            This report shows expenses by both their nature (what was purchased) and function (how it serves the mission).
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 35%;">Expense Type</th>
+                        <th class="text-end" style="width: 18%;">Program Services</th>
+                        <th class="text-end" style="width: 18%;">Management & General</th>
+                        <th class="text-end" style="width: 18%;">Fundraising</th>
+                        <th class="text-end" style="width: 11%;"><strong>Total</strong></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, expense in data.expenses.items() %}
+                    <tr>
+                        <td>
+                            <strong>{{ expense.number }}</strong> - {{ name }}
+                        </td>
+                        <td class="text-end">
+                            {% if expense.program > 0 %}
+                            ${{ "%.2f"|format(expense.program) }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if expense.management > 0 %}
+                            ${{ "%.2f"|format(expense.management) }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if expense.fundraising > 0 %}
+                            ${{ "%.2f"|format(expense.fundraising) }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><strong>${{ "%.2f"|format(expense.total) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-primary">
+                    <tr>
+                        <td><strong>TOTAL EXPENSES BY FUNCTION</strong></td>
+                        <td class="text-end"><strong>${{ "%.2f"|format(data.totals.program) }}</strong></td>
+                        <td class="text-end"><strong>${{ "%.2f"|format(data.totals.management) }}</strong></td>
+                        <td class="text-end"><strong>${{ "%.2f"|format(data.totals.fundraising) }}</strong></td>
+                        <td class="text-end"><strong>${{ "%.2f"|format(data.totals.total) }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card border-primary">
+                    <div class="card-body text-center">
+                        <h6 class="text-primary">Program Services</h6>
+                        <h3>${{ "%.2f"|format(data.totals.program) }}</h3>
+                        <p class="text-muted mb-0">
+                            {{ "%.1f"|format((data.totals.program / data.totals.total * 100) if data.totals.total > 0 else 0) }}%
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <h6 class="text-warning">Management & General</h6>
+                        <h3>${{ "%.2f"|format(data.totals.management) }}</h3>
+                        <p class="text-muted mb-0">
+                            {{ "%.1f"|format((data.totals.management / data.totals.total * 100) if data.totals.total > 0 else 0) }}%
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h6 class="text-success">Fundraising</h6>
+                        <h3>${{ "%.2f"|format(data.totals.fundraising) }}</h3>
+                        <p class="text-muted mb-0">
+                            {{ "%.1f"|format((data.totals.fundraising / data.totals.total * 100) if data.totals.total > 0 else 0) }}%
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 bg-light">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle"></i> Understanding Functional Expenses</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <p class="small mb-1"><strong>Program Services:</strong></p>
+                        <p class="small">Direct costs of mission-related activities and programs that fulfill the organization's purpose.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="small mb-1"><strong>Management & General:</strong></p>
+                        <p class="small">Administrative overhead including accounting, legal, board governance, and general operations.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="small mb-1"><strong>Fundraising:</strong></p>
+                        <p class="small">Costs of soliciting contributions, grants, sponsorships, and other fundraising activities.</p>
+                    </div>
+                </div>
+                <hr>
+                <p class="small text-muted mb-0">
+                    <strong>Note:</strong> This simplified allocation distributes personnel costs (70% program, 20% admin, 10% fundraising). 
+                    For more precise reporting, track functional allocation at the transaction level.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,6 +3,7 @@
 **Version 1.0 - Production Ready**
 
 > Visible application name is configurable in `config.py` via the `APP_NAME` value.
+> CARES supports organization-specific editions, including **REGALIA** for Knights of Columbus chapters.
 
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
@@ -29,6 +30,19 @@
 
 The **CARES - Community Accounting & Resource Engagement System** is a comprehensive, FASB ASC 958-compliant accounting solution designed specifically for nonprofit organizations. Built by accountants for organizations run by volunteers, this system makes professional-grade financial management accessible to users with no accounting background while maintaining the rigor required for grant applications, Form 990 preparation, and audit compliance.
 
+
+## 🧩 Editions
+
+CARES supports **organization-specific editions** that apply tailored branding, defaults, and workflows while sharing the same compliant accounting core.
+
+### REGALIA — A CARES Edition for Knights of Columbus
+
+**REGALIA** is the Knights of Columbus edition of CARES.  
+It includes Knights-specific terminology, branding, and chapter-oriented workflows, while preserving the same CARES accounting engine, reporting structure, and security model.
+
+If you are using REGALIA, you are using CARES.
+
+
 ### Purpose
 
 Traditional accounting software (QuickBooks, Xero, etc.) is designed for businesses, not nonprofits. These solutions:
@@ -53,7 +67,7 @@ This system solves these problems with a **free, open-source, nonprofit-native a
 - ✅ **Audit trail** - Every transaction tracked with user, date, and purpose
 
 ### For nonprofit chapters
-- ✅ **Official branding** - CARES colors and styling
+- ✅ **Edition branding** - organization-specific colors and styling (e.g., REGALIA for Knights of Columbus)
 - ✅ **Chapter-specific features** - Dues tracking, member management, project tracking
 - ✅ **Multi-chapter ready** - Architecture supports state/district consolidation
 - ✅ **Form 990 ready** - All data structured for easy tax filing
@@ -71,9 +85,9 @@ This system solves these problems with a **free, open-source, nonprofit-native a
 |----------|--------------|------------|-------------|
 | QuickBooks Nonprofit | $40-100 | $0 | $480-1,200 |
 | Aplos | $79-139 | $500 | $948-2,168 |
-| **KofC Accounting** | **$0-14** | **$0** | **$0-168** |
+| **CARES (Self-Hosted)** | **$0-14** | **$0** | **$0-168** |
 
-*KofC Accounting can run entirely free on Render.com's free tier, or $14/month for premium hosting*
+*CARES can run entirely free on Render.com's free tier, or $14/month for premium hosting*
 
 ---
 
@@ -340,11 +354,13 @@ Tracks how cash moved in and out:
 
 ### 🎨 **Professional Branding**
 
-#### **CARES Official Colors**
+#### **REGALIA Official Colors (Knights of Columbus Edition)**
 - Primary: Oxford Blue (#003595)
 - Secondary: Gold (#FAA514)
 - Accent: Red (#FE0000)
 - Official color meanings documented
+
+These colors apply to the **REGALIA** edition. CARES can be rebranded for any nonprofit by changing the branding CSS variables.
 
 #### **Easily Rebrandable**
 Change one CSS file to rebrand for any organization:
@@ -426,8 +442,8 @@ Every transaction tracks:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/kofc-accounting.git
-cd kofc-accounting
+git clone https://github.com/mikevan/cares.git
+cd cares
 ```
 
 2. **Install dependencies**
@@ -789,7 +805,7 @@ Copyright (c) 2026 CARES - Community Accounting & Resource Engagement System
 Built with ❤️ for nonprofit organizations by accountants who understand your challenges.
 
 **Special thanks to:**
-- CARES for inspiration and color scheme
+- Knights of Columbus for inspiration and the REGALIA edition styling
 - FASB for nonprofit accounting standards
 - The Flask community for excellent documentation
 - All volunteer treasurers keeping nonprofits running
@@ -806,7 +822,9 @@ Built with ❤️ for nonprofit organizations by accountants who understand your
 
 ---
 
-**Built for nonprofit chapters**
+**Built for community-service nonprofits**
+
+**REGALIA Edition:** Built for Knights of Columbus chapters
 
 *Faith • Family • Community • Life*
 

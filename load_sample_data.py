@@ -670,7 +670,7 @@ def create_sample_transactions(projects, users):
             ('5310', '185.00', '0.00', 'VOIDED - duplicate'),
             ('1010', '0.00', '185.00', 'VOIDED - duplicate')
         ]
-    ))
+    )
     voided_entry.status = 'Voided'
     transactions.append(voided_entry)
     

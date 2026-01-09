@@ -5,9 +5,9 @@ Set APP_NAME and DEFAULT_ORGANIZATION here, or override using instance/config.py
 
 class Config:
     # The visible application name shown in templates and generated reports
-    APP_NAME = "Regalia - A CARES edition for Knights of Columbus"
+    APP_NAME = "REGALIA"
 
     # Default organization/chapters used as report fallbacks and initial seed data
-    DEFAULT_ORGANIZATION = "Knights of Columbus - Example Chapter"
+    DEFAULT_ORGANIZATION = "A CARES Edition for the Knights of Columbus - Example Chapter"
 
     # You can add other configuration values here as needed

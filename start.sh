@@ -9,3 +9,4 @@ python init_db.py
 
 # Start the application
 exec gunicorn app:app
+

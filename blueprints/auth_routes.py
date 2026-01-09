@@ -54,7 +54,7 @@ def init_database(app):
         # Create default organization if none exists
         if not Organization.query.first():
             org = Organization(
-                name='Knights of Columbus - Example Chapter',
+                name=app.config.get('DEFAULT_ORGANIZATION', 'CARES - Example Chapter'),
                 org_type='Chapter',
                 fiscal_year_start=1
             )

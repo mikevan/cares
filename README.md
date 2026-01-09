@@ -1,6 +1,9 @@
-# Knights of Columbus Accounting System
+# CARES - Community Accounting & Resource Engagement System
 
 **Version 1.0 - Production Ready**
+
+> Visible application name is configurable in `config.py` via the `APP_NAME` value.
+
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)
@@ -24,7 +27,7 @@
 
 ## 🎯 Overview
 
-The **Knights of Columbus Accounting System** is a comprehensive, FASB ASC 958-compliant accounting solution designed specifically for nonprofit organizations, with a focus on Knights of Columbus chapters. Built by accountants for organizations run by volunteers, this system makes professional-grade financial management accessible to users with no accounting background while maintaining the rigor required for grant applications, Form 990 preparation, and audit compliance.
+The **CARES - Community Accounting & Resource Engagement System** is a comprehensive, FASB ASC 958-compliant accounting solution designed specifically for nonprofit organizations. Built by accountants for organizations run by volunteers, this system makes professional-grade financial management accessible to users with no accounting background while maintaining the rigor required for grant applications, Form 990 preparation, and audit compliance.
 
 ### Purpose
 
@@ -49,8 +52,8 @@ This system solves these problems with a **free, open-source, nonprofit-native a
 - ✅ **Multi-user** - Unlimited users with role-based permissions
 - ✅ **Audit trail** - Every transaction tracked with user, date, and purpose
 
-### For Knights of Columbus Chapters
-- ✅ **Official branding** - Knights of Columbus colors and styling
+### For nonprofit chapters
+- ✅ **Official branding** - CARES colors and styling
 - ✅ **Chapter-specific features** - Dues tracking, member management, project tracking
 - ✅ **Multi-chapter ready** - Architecture supports state/district consolidation
 - ✅ **Form 990 ready** - All data structured for easy tax filing
@@ -337,7 +340,7 @@ Tracks how cash moved in and out:
 
 ### 🎨 **Professional Branding**
 
-#### **Knights of Columbus Official Colors**
+#### **CARES Official Colors**
 - Primary: Oxford Blue (#003595)
 - Secondary: Gold (#FAA514)
 - Accent: Red (#FE0000)
@@ -777,7 +780,7 @@ Edit `/static/css/branding.css`:
 
 MIT License - Free for commercial and nonprofit use
 
-Copyright (c) 2026 Knights of Columbus Accounting System
+Copyright (c) 2026 CARES - Community Accounting & Resource Engagement System
 
 ---
 
@@ -786,7 +789,7 @@ Copyright (c) 2026 Knights of Columbus Accounting System
 Built with ❤️ for nonprofit organizations by accountants who understand your challenges.
 
 **Special thanks to:**
-- Knights of Columbus for inspiration and color scheme
+- CARES for inspiration and color scheme
 - FASB for nonprofit accounting standards
 - The Flask community for excellent documentation
 - All volunteer treasurers keeping nonprofits running
@@ -803,7 +806,7 @@ Built with ❤️ for nonprofit organizations by accountants who understand your
 
 ---
 
-**Built for Knights of Columbus Chapters**
+**Built for nonprofit chapters**
 
 *Faith • Family • Community • Life*
 

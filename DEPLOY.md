@@ -1,4 +1,4 @@
-# Knights of Columbus Accounting System - Deployment Guide
+# CARES - Community Accounting & Resource Engagement System - Deployment Guide
 
 **Version 1.0**
 
@@ -200,7 +200,7 @@ app.run(debug=True, host='0.0.0.0', port=8080)
 ```bash
 git init
 git add .
-git commit -m "Initial commit - Knights of Columbus Accounting System v1.0"
+git commit -m "Initial commit - CARES - Community Accounting & Resource Engagement System v1.0"
 ```
 
 #### 1.2 Create GitHub Repository
@@ -853,7 +853,7 @@ Use this checklist for production deployments:
 
 ## 🎉 Success!
 
-Your Knights of Columbus Accounting System is now live!
+Your CARES site is now live!
 
 **Next Steps:**
 1. Change admin password

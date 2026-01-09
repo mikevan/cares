@@ -1,5 +1,5 @@
 """
-Knights of Columbus Accounting System
+CARES - Community Accounting & Resource Engagement System
 Main Flask Application
 """
 
@@ -19,6 +19,9 @@ from blueprints.report_routes import reports_bp
 from blueprints.settings_routes import settings_bp
 
 app = Flask(__name__)
+# Load default application configuration (override with instance/config.py if present)
+app.config.from_object('config.Config')
+app.config.from_pyfile('config.py', silent=True)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///kofc_accounting.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -26,7 +29,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'auth.login'
+
+@app.context_processor
+def inject_branding():
+    # Expose branding tokens to templates
+    return dict(APP_NAME=app.config.get('APP_NAME'), DEFAULT_ORGANIZATION=app.config.get('DEFAULT_ORGANIZATION'))
+
+login_manager.login_view = 'auth.login' 
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(members_bp)

@@ -1,5 +1,5 @@
 """
-Knights of Columbus Accounting System - Database Models
+CARES - Community Accounting & Resource Engagement System - Database Models
 FASB ASC 958 Compliant Double-Entry Accounting
 """
 from flask_sqlalchemy import SQLAlchemy

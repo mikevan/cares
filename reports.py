@@ -3,6 +3,7 @@ Financial Reports Generator
 Generates FASB ASC 958 compliant financial statements
 """
 from models import JournalEntry, JournalEntryLine, ChartOfAccounts, Organization
+from flask import current_app
 from sqlalchemy import func, and_
 from datetime import datetime, date, timedelta
 from decimal import Decimal
@@ -91,7 +92,7 @@ class FinancialReports:
             total_net_assets = total_assets - total_liabilities
         
         return {
-            'organization': org.name if org else "Knights of Columbus Chapter",
+            'organization': org.name if org else current_app.config.get('DEFAULT_ORGANIZATION', current_app.config.get('APP_NAME', 'CARES - Community Accounting & Resource Engagement System')),
             'as_of_date': as_of_date.strftime('%B %d, %Y'),
             'assets': {
                 'accounts': assets,
@@ -195,7 +196,7 @@ class FinancialReports:
         net_income = total_revenue - total_expenses
         
         return {
-            'organization': org.name if org else "Knights of Columbus Chapter",
+            'organization': org.name if org else current_app.config.get('DEFAULT_ORGANIZATION', current_app.config.get('APP_NAME', 'CARES - Community Accounting & Resource Engagement System')),
             'period': f'{start_date.strftime("%B %d, %Y")} to {end_date.strftime("%B %d, %Y")}',
             'start_date': start_date.strftime('%Y-%m-%d'),
             'end_date': end_date.strftime('%Y-%m-%d'),
@@ -245,7 +246,7 @@ class FinancialReports:
         operating_cash = income_stmt['net_income']
         
         return {
-            'organization': org.name if org else "Knights of Columbus Chapter",
+            'organization': org.name if org else current_app.config.get('DEFAULT_ORGANIZATION', current_app.config.get('APP_NAME', 'CARES - Community Accounting & Resource Engagement System')),
             'period': f'{start_date.strftime("%B %d, %Y")} to {end_date.strftime("%B %d, %Y")}',
             'operating_activities': float(operating_cash),
             'investing_activities': 0.0,
@@ -341,7 +342,7 @@ class FinancialReports:
         total_expenses = sum(exp['total'] for exp in expenses_by_nature.values())
         
         return {
-            'organization': org.name if org else "Knights of Columbus Chapter",
+            'organization': org.name if org else current_app.config.get('DEFAULT_ORGANIZATION', current_app.config.get('APP_NAME', 'CARES - Community Accounting & Resource Engagement System')),
             'period': f'{start_date.strftime("%B %d, %Y")} to {end_date.strftime("%B %d, %Y")}',
             'start_date': start_date.strftime('%Y-%m-%d'),
             'end_date': end_date.strftime('%Y-%m-%d'),

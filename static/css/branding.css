@@ -1,12 +1,12 @@
 /*
  * BRANDING.CSS
- * Knights of Columbus Official Color Scheme
+ * CARES Official Color Scheme
  * 
  * This file contains the brand colors and styling for the organization.
  * To rebrand for another organization, simply update the CSS variables
  * in the :root section below.
  * 
- * Official Knights of Columbus Colors:
+ * Official CARES Colors:
  * - Gold/Yellow: #FAA514 (Pantone PMS 137 C) - Symbol of riches through hard work
  * - Oxford Blue: #003595 (Pantone PMS 661 C) - Hope, calm tranquility
  * - Red: #FE0000 - Courage, valor, giving of one's self
@@ -403,7 +403,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand-emblem {
-    /* Space for Knights of Columbus emblem or other organization logo */
+    /* Space for organization emblem or other organization logo */
     background-position: center;
     background-size: contain;
     background-repeat: no-repeat;

@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if account else 'New' }} Account{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ 'Edit' if account else 'New' }} Account</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="account_number" class="form-label">Account Number *</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="account_number" 
+                                   name="account_number" 
+                                   value="{{ account.account_number if account else '' }}" 
+                                   required
+                                   pattern="[0-9]{4,10}"
+                                   title="4-10 digit number">
+                            <small class="text-muted">4-10 digits (e.g., 1010, 5320)</small>
+                        </div>
+                        
+                        <div class="col-md-8 mb-3">
+                            <label for="account_name" class="form-label">Account Name *</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="account_name" 
+                                   name="account_name" 
+                                   value="{{ account.account_name if account else '' }}" 
+                                   required
+                                   maxlength="200">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="account_type" class="form-label">Account Type *</label>
+                            <select class="form-select" id="account_type" name="account_type" required>
+                                <option value="">-- Select Account Type --</option>
+                                <option value="Asset" {{ 'selected' if account and account.account_type == 'Asset' else '' }}>
+                                    Asset (What you own)
+                                </option>
+                                <option value="Liability" {{ 'selected' if account and account.account_type == 'Liability' else '' }}>
+                                    Liability (What you owe)
+                                </option>
+                                <option value="Net Asset" {{ 'selected' if account and account.account_type == 'Net Asset' else '' }}>
+                                    Net Asset (Organization equity)
+                                </option>
+                                <option value="Revenue" {{ 'selected' if account and account.account_type == 'Revenue' else '' }}>
+                                    Revenue (Income)
+                                </option>
+                                <option value="Expense" {{ 'selected' if account and account.account_type == 'Expense' else '' }}>
+                                    Expense (Costs)
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="account_subtype" class="form-label">Account Subtype</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="account_subtype" 
+                                   name="account_subtype" 
+                                   value="{{ account.account_subtype if account else '' }}"
+                                   placeholder="e.g., Cash, Fixed Assets, Personnel"
+                                   maxlength="100">
+                            <small class="text-muted">Optional - used for grouping in reports</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="normal_balance" class="form-label">Normal Balance *</label>
+                            <select class="form-select" id="normal_balance" name="normal_balance" required>
+                                <option value="">-- Select Normal Balance --</option>
+                                <option value="Debit" {{ 'selected' if account and account.normal_balance == 'Debit' else '' }}>
+                                    Debit (Assets, Expenses)
+                                </option>
+                                <option value="Credit" {{ 'selected' if account and account.normal_balance == 'Credit' else '' }}>
+                                    Credit (Liabilities, Net Assets, Revenue)
+                                </option>
+                            </select>
+                            <small class="text-muted">Determines how balances are calculated</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="parent_account_id" class="form-label">Parent Account</label>
+                            <select class="form-select" id="parent_account_id" name="parent_account_id">
+                                <option value="">-- No Parent (Top Level) --</option>
+                                {% for parent in parent_accounts %}
+                                <option value="{{ parent.id }}" 
+                                        {{ 'selected' if account and account.parent_account_id == parent.id else '' }}>
+                                    {{ parent.account_number }} - {{ parent.account_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Optional - for sub-accounts</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" 
+                                  id="description" 
+                                  name="description" 
+                                  rows="3"
+                                  maxlength="500">{{ account.description if account else '' }}</textarea>
+                        <small class="text-muted">Optional - helps clarify account purpose</small>
+                    </div>
+                    
+                    {% if account %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Note:</strong>
+                        Changing account type or normal balance can affect existing transactions.
+                        Only make these changes if you're certain they're correct.
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('chart_of_accounts.list') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> {{ 'Update' if account else 'Create' }} Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Account Numbering Guide
+            </div>
+            <div class="card-body">
+                <h6>Standard Account Number Ranges:</h6>
+                <ul class="small">
+                    <li><strong>1000-1999:</strong> Assets
+                        <ul>
+                            <li>1000-1099: Cash</li>
+                            <li>1100-1299: Receivables</li>
+                            <li>1500-1599: Fixed Assets</li>
+                        </ul>
+                    </li>
+                    <li><strong>2000-2999:</strong> Liabilities
+                        <ul>
+                            <li>2000-2099: Current Liabilities</li>
+                            <li>2500-2599: Long-term Debt</li>
+                        </ul>
+                    </li>
+                    <li><strong>3000-3999:</strong> Net Assets
+                        <ul>
+                            <li>3100: Unrestricted</li>
+                            <li>3200-3299: Restricted</li>
+                        </ul>
+                    </li>
+                    <li><strong>4000-4999:</strong> Revenue
+                        <ul>
+                            <li>4000-4099: Contributions</li>
+                            <li>4100-4199: Dues</li>
+                            <li>4200-4299: Events</li>
+                        </ul>
+                    </li>
+                    <li><strong>5000-5999:</strong> Expenses
+                        <ul>
+                            <li>5000-5099: Personnel</li>
+                            <li>5200-5299: Occupancy</li>
+                            <li>5300-5399: Supplies</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-lightbulb"></i> Tips
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>Use consistent numbering within ranges</li>
+                    <li>Leave gaps for future accounts (e.g., 1010, 1020, 1030)</li>
+                    <li>Parent accounts help organize reports</li>
+                    <li>Subtypes group related accounts in financial statements</li>
+                    <li>Normal Balance should match account type</li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if account %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i> Account Details
+            </div>
+            <div class="card-body small">
+                <p><strong>Created:</strong><br>{{ account.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                <p><strong>Status:</strong><br>
+                    {% if account.active %}
+                    <span class="badge bg-success">Active</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </p>
+                {% if account.sub_accounts %}
+                <p class="mb-0"><strong>Sub-Accounts:</strong> {{ account.sub_accounts|length }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Auto-suggest normal balance based on account type
+document.getElementById('account_type').addEventListener('change', function() {
+    const type = this.value;
+    const normalBalance = document.getElementById('normal_balance');
+    
+    // Only auto-select if not already set
+    if (!normalBalance.value) {
+        if (type === 'Asset' || type === 'Expense') {
+            normalBalance.value = 'Debit';
+        } else if (type === 'Liability' || type === 'Net Asset' || type === 'Revenue') {
+            normalBalance.value = 'Credit';
+        }
+    }
+});
+</script>
+{% endblock %}

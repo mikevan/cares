@@ -7,10 +7,10 @@
     <h1 class="h2">Members</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="/members/new" class="btn btn-primary"><i class="bi bi-person-plus"></i> Add Member</a>
-		<a href="{{ url_for('import_members') }}" class="btn btn-secondary me-2">
+		<a href="{{ url_for('members.import_members') }}" class="btn btn-secondary me-2">
 			<i class="bi bi-upload"></i> Import Members
 		</a>
-		<a href="{{ url_for('export_members') }}" class="btn btn-outline-secondary me-2">
+		<a href="{{ url_for('members.export_members') }}" class="btn btn-outline-secondary me-2">
 			<i class="bi bi-download"></i> Export CSV
 		</a>
     </div>

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Chart of Accounts{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Chart of Accounts</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if current_user.role == 'Admin' %}
+        <a href="{{ url_for('chart_of_accounts.new') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Account
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="type" class="form-label">Account Type</label>
+                <select class="form-select" id="type" name="type" onchange="this.form.submit()">
+                    <option value="">All Types</option>
+                    {% for type in account_types %}
+                    <option value="{{ type }}" {{ 'selected' if type == account_type_filter else '' }}>
+                        {{ type }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-4">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="search" 
+                       name="search" 
+                       value="{{ search_query }}"
+                       placeholder="Account number or name...">
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="form-check">
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           id="show_inactive" 
+                           name="show_inactive" 
+                           value="true"
+                           {{ 'checked' if show_inactive else '' }}
+                           onchange="this.form.submit()">
+                    <label class="form-check-label" for="show_inactive">
+                        Show Inactive Accounts
+                    </label>
+                </div>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Accounts Table -->
+<div class="card">
+    <div class="card-body">
+        {% if accounts %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Number</th>
+                        <th style="width: 30%;">Account Name</th>
+                        <th style="width: 12%;">Type</th>
+                        <th style="width: 15%;">Subtype</th>
+                        <th style="width: 10%;">Balance</th>
+                        <th style="width: 13%;">Parent</th>
+                        <th style="width: 8%;">Status</th>
+                        {% if current_user.role == 'Admin' %}
+                        <th style="width: 10%;">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in accounts %}
+                    <tr class="{{ 'table-secondary' if not account.active else '' }}">
+                        <td>
+                            <strong class="account-type-{{ account.account_type.lower().replace(' ', '-') }}">
+                                {{ account.account_number }}
+                            </strong>
+                        </td>
+                        <td>
+                            {{ account.account_name }}
+                            {% if account.description %}
+                            <br><small class="text-muted">{{ account.description[:50] }}...</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 
+                                'primary' if account.account_type == 'Asset' else
+                                'warning text-dark' if account.account_type == 'Liability' else
+                                'success' if account.account_type == 'Net Asset' else
+                                'info' if account.account_type == 'Revenue' else
+                                'danger' if account.account_type == 'Expense' else
+                                'secondary'
+                            }}">
+                                {{ account.account_type }}
+                            </span>
+                        </td>
+                        <td>{{ account.account_subtype or '-' }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark">
+                                {{ account.normal_balance }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if account.parent_account %}
+                            <small class="text-muted">
+                                {{ account.parent_account.account_number }}
+                            </small>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if account.active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        {% if current_user.role == 'Admin' %}
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('chart_of_accounts.edit', id=account.id) }}" 
+                                   class="btn btn-outline-primary"
+                                   title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                
+                                <form method="POST" 
+                                      action="{{ url_for('chart_of_accounts.toggle_active', id=account.id) }}" 
+                                      style="display:inline;">
+                                    <button type="submit" 
+                                            class="btn btn-outline-{{ 'secondary' if account.active else 'success' }}"
+                                            title="{{ 'Deactivate' if account.active else 'Activate' }}">
+                                        <i class="bi bi-{{ 'pause-circle' if account.active else 'play-circle' }}"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            <p class="text-muted">
+                <strong>Total Accounts:</strong> {{ accounts|length }}
+                {% if not show_inactive %}
+                (Active only - <a href="?show_inactive=true">show inactive accounts</a>)
+                {% endif %}
+            </p>
+        </div>
+        
+        {% else %}
+        <p class="text-muted">
+            No accounts found matching your criteria.
+            {% if search_query or account_type_filter %}
+            <a href="{{ url_for('chart_of_accounts.list') }}">Clear filters</a>
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Account Type Legend -->
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="bi bi-info-circle"></i> Account Types Reference
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <h6><span class="badge bg-primary">Asset</span></h6>
+                <p class="small">What the organization owns (cash, equipment, receivables)</p>
+            </div>
+            <div class="col-md-4">
+                <h6><span class="badge bg-warning text-dark">Liability</span></h6>
+                <p class="small">What the organization owes (loans, payables, accrued expenses)</p>
+            </div>
+            <div class="col-md-4">
+                <h6><span class="badge bg-success">Net Asset</span></h6>
+                <p class="small">Organization's equity (restricted and unrestricted funds)</p>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-4">
+                <h6><span class="badge bg-info">Revenue</span></h6>
+                <p class="small">Income sources (dues, donations, grants, program fees)</p>
+            </div>
+            <div class="col-md-4">
+                <h6><span class="badge bg-danger">Expense</span></h6>
+                <p class="small">Costs incurred (salaries, rent, supplies, utilities)</p>
+            </div>
+            <div class="col-md-4">
+                <h6>Normal Balance</h6>
+                <p class="small"><strong>Debit:</strong> Assets, Expenses<br>
+                <strong>Credit:</strong> Liabilities, Net Assets, Revenue</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.account-type-asset { color: #0d6efd; }
+.account-type-liability { color: #fd7e14; }
+.account-type-net-asset { color: #198754; }
+.account-type-revenue { color: #0dcaf0; }
+.account-type-expense { color: #dc3545; }
+</style>
+{% endblock %}

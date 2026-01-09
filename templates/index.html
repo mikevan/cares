@@ -3,124 +3,205 @@
 {% block title %}Dashboard - Knights of Columbus Accounting{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Dashboard</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group me-2">
-            <a href="/members/new" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-plus"></i> Add Member</a>
-            <a href="/projects/new" class="btn btn-sm btn-outline-secondary"><i class="bi bi-folder-plus"></i> New Project</a>
+<!-- Page Header -->
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Welcome back, {{ current_user.username }}! Here's your organization's overview.</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('transactions.new') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Transaction
+        </a>
+    </div>
+</div>
+
+<!-- Key Statistics -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Active Members</div>
+                    <div class="stat-value">{{ member_count }}</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="stat-card stat-card-secondary">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Active Projects</div>
+                    <div class="stat-value">{{ project_count }}</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-kanban"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Cash Balance</div>
+                    <div class="stat-value">${{ "%.2f"|format(cash_balance) }}</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-4">
-        <div class="card stat-card">
-            <div class="card-body text-center">
-                <i class="bi bi-people fs-1 text-primary"></i>
-                <h3 class="mt-2">{{ member_count }}</h3>
-                <p class="text-muted">Active Members</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card stat-card">
-            <div class="card-body text-center">
-                <i class="bi bi-folder fs-1 text-info"></i>
-                <h3 class="mt-2">{{ project_count }}</h3>
-                <p class="text-muted">Active Projects</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card stat-card">
-            <div class="card-body text-center">
-                <i class="bi bi-cash-stack fs-1 text-success"></i>
-                <h3 class="mt-2 {{ 'positive' if cash_balance >= 0 else 'negative' }}">${{ "%.2f"|format(cash_balance) }}</h3>
-                <p class="text-muted">Cash Balance</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-md-12">
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5><i class="bi bi-clock-history"></i> Recent Transactions</h5>
+                <i class="bi bi-lightning"></i> Quick Actions
             </div>
             <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3 col-sm-6">
+                        <a href="{{ url_for('members.new') }}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-person-plus"></i> Add Member
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <a href="{{ url_for('projects.new') }}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-plus-circle"></i> New Project
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <a href="{{ url_for('transactions.new') }}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-cash-coin"></i> New Transaction
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <a href="/reports" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-file-earmark-text"></i> View Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card card-compact">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-clock-history"></i> Recent Transactions
+                </div>
+                <a href="{{ url_for('transactions.list') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body p-0">
                 {% if recent_transactions %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-striped table-hover table-compact mb-0">
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th style="width: 90px;">Date</th>
                                 <th>Description</th>
-                                <th>Project</th>
-                                <th>Reference</th>
-                                <th>Status</th>
+                                <th style="width: 120px;">Project</th>
+                                <th style="width: 100px;">Reference</th>
+                                <th style="width: 100px;" class="text-end">Amount</th>
+                                <th style="width: 90px;">Status</th>
+                                <th style="width: 80px;" class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for transaction in recent_transactions %}
-                            <tr style="cursor: pointer;" onclick="window.location='/transactions/{{ transaction.id }}';">
-                                <td>{{ transaction.entry_date.strftime('%Y-%m-%d') }}</td>
-                                <td>{{ transaction.description }}</td>
-                                <td><span class="badge bg-secondary">{{ transaction.project.name }}</span></td>
-                                <td>{{ transaction.reference_number or '-' }}</td>
+                            <tr>
+                                <td class="date-column">{{ transaction.entry_date.strftime('%m/%d/%Y') }}</td>
+                                <td>
+                                    <strong>{{ transaction.description }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-primary">
+                                        {{ transaction.project.name }}
+                                    </span>
+                                </td>
+                                <td class="account-number">{{ transaction.reference_number or '—' }}</td>
+                                <td class="text-end amount">
+                                    {% set total = namespace(value=0) %}
+                                    {% for line in transaction.lines %}
+                                        {% set total.value = total.value + (line.debit_amount or 0) %}
+                                    {% endfor %}
+                                    ${{ "%.2f"|format(total.value) }}
+                                </td>
                                 <td>
                                     {% if transaction.status == 'Posted' %}
-                                    <span class="badge bg-success">Posted</span>
-                                    {% elif transaction.status == 'Draft' %}
-                                    <span class="badge bg-warning">Draft</span>
+                                    <span class="badge badge-success">Posted</span>
+                                    {% elif transaction.status == 'Voided' %}
+                                    <span class="badge badge-danger">Voided</span>
                                     {% else %}
-                                    <span class="badge bg-danger">Voided</span>
+                                    <span class="badge badge-warning">{{ transaction.status }}</span>
                                     {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('transactions.view', id=transaction.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                <a href="/transactions" class="btn btn-primary btn-sm">View All Transactions</a>
                 {% else %}
-                <p class="text-muted">No transactions recorded yet.</p>
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="bi bi-inbox"></i>
+                    </div>
+                    <div class="empty-state-title">No transactions yet</div>
+                    <div class="empty-state-description">
+                        Get started by creating your first transaction
+                    </div>
+                    <a href="{{ url_for('transactions.new') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Transaction
+                    </a>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- Financial Overview (Optional Section) -->
 <div class="row mt-4">
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5><i class="bi bi-graph-up"></i> Quick Actions</h5>
+                <i class="bi bi-pie-chart"></i> Account Summary
             </div>
             <div class="card-body">
-                <a href="/reports/balance-sheet" class="btn btn-outline-primary btn-sm w-100 mb-2">
-                    <i class="bi bi-file-earmark-bar-graph"></i> View Balance Sheet
-                </a>
-                <a href="/reports/income-statement" class="btn btn-outline-primary btn-sm w-100 mb-2">
-                    <i class="bi bi-file-earmark-spreadsheet"></i> View Income Statement
-                </a>
-                <a href="/reports/cash-flow" class="btn btn-outline-primary btn-sm w-100">
-                    <i class="bi bi-cash-coin"></i> View Cash Flow Statement
-                </a>
+                <p class="text-muted">Financial summary and charts will appear here in Phase 2.</p>
             </div>
         </div>
     </div>
+    
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5><i class="bi bi-info-circle"></i> System Information</h5>
+                <i class="bi bi-graph-up"></i> Activity Overview
             </div>
             <div class="card-body">
-                <p><strong>User:</strong> {{ current_user.username }}</p>
-                <p><strong>Role:</strong> <span class="badge bg-primary">{{ current_user.role }}</span></p>
-                <p><strong>Organization:</strong> {{ current_user.organization.name }}</p>
-                <p class="mb-0"><strong>Fiscal Year Starts:</strong> Month {{ current_user.organization.fiscal_year_start }}</p>
+                <p class="text-muted">Activity graphs and trends will appear here in Phase 2.</p>
             </div>
         </div>
     </div>

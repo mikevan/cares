@@ -37,10 +37,10 @@
                                 <i class="bi bi-person-plus"></i> Add Member
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('import_members') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('members.import_members') }}">
                                 <i class="bi bi-upload"></i> Import Members
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('export_members') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('members.export_members') }}">
                                 <i class="bi bi-download"></i> Export Members
                             </a></li>
                         </ul>
@@ -52,10 +52,10 @@
                             <i class="bi bi-kanban"></i> Projects
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="projectsDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('projects') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('projects.list') }}">
                                 <i class="bi bi-list"></i> View Projects
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('project_new') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('projects.new') }}">
                                 <i class="bi bi-plus-circle"></i> Add Project
                             </a></li>
                         </ul>
@@ -67,10 +67,10 @@
                             <i class="bi bi-cash-coin"></i> Transactions
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="transactionsDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('transactions') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('transactions.list') }}">
                                 <i class="bi bi-list"></i> View Transactions
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('transaction_new') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('transactions.new') }}">
                                 <i class="bi bi-plus-circle"></i> New Transaction
                             </a></li>
                         </ul>
@@ -79,6 +79,14 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/reports"><i class="bi bi-file-earmark-text"></i> Reports</a>
                     </li>
+                    
+                    {% if current_user.role in ['Admin', 'Treasurer'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('chart_of_accounts.list') }}">
+                            <i class="bi bi-journal-text"></i> Chart of Accounts
+                        </a>
+                    </li>
+                    {% endif %}
                     
                     {% if current_user.role == 'Admin' %}
                     <!-- Users Dropdown (Admin Only) -->
@@ -145,6 +153,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/validation.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -7,113 +7,37 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/branding.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
 </head>
-<body>
+<body class="{% if not current_user.is_authenticated %}login-page{% endif %}">
     {% if current_user.is_authenticated %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <!-- Top Header Bar -->
+    <header class="top-header">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-shield-fill-check"></i> Knights of Columbus Accounting
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/"><i class="bi bi-speedometer2"></i> Dashboard</a>
-                    </li>
-					
-                    <!-- Members Dropdown -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="membersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-people"></i> Members
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="membersDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('members.list') }}">
-                                <i class="bi bi-list"></i> View Members
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('members.new') }}">
-                                <i class="bi bi-person-plus"></i> Add Member
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('members.import_members') }}">
-                                <i class="bi bi-upload"></i> Import Members
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('members.export_members') }}">
-                                <i class="bi bi-download"></i> Export Members
-                            </a></li>
-                        </ul>
-                    </li>
-
-                    <!-- Projects Dropdown -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="projectsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-kanban"></i> Projects
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="projectsDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('projects.list') }}">
-                                <i class="bi bi-list"></i> View Projects
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('projects.new') }}">
-                                <i class="bi bi-plus-circle"></i> Add Project
-                            </a></li>
-                        </ul>
-                    </li>
-
-                    <!-- Transactions Dropdown -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="transactionsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-cash-coin"></i> Transactions
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="transactionsDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('transactions.list') }}">
-                                <i class="bi bi-list"></i> View Transactions
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('transactions.new') }}">
-                                <i class="bi bi-plus-circle"></i> New Transaction
-                            </a></li>
-                        </ul>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="/reports"><i class="bi bi-file-earmark-text"></i> Reports</a>
-                    </li>
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <button class="sidebar-toggle btn btn-link d-md-none" id="sidebarToggle">
+                        <i class="bi bi-list fs-4"></i>
+                    </button>
+                    <h5 class="mb-0 ms-3 d-none d-md-block text-primary fw-bold">
+                        <i class="bi bi-shield-fill-check"></i> Knights of Columbus Accounting
+                    </h5>
+                </div>
+                
+                <div class="d-flex align-items-center">
+                    <span class="text-muted me-3 d-none d-md-inline">
+                        <i class="bi bi-building"></i> {{ current_user.organization.name if current_user.organization else 'Organization' }}
+                    </span>
                     
-                    {% if current_user.role in ['Admin', 'Treasurer'] %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('chart_of_accounts.list') }}">
-                            <i class="bi bi-journal-text"></i> Chart of Accounts
-                        </a>
-                    </li>
-                    {% endif %}
-                    
-                    {% if current_user.role == 'Admin' %}
-                    <!-- Users Dropdown (Admin Only) -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-gear"></i> Users
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="usersDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('users.list') }}">
-                                <i class="bi bi-list"></i> Manage Users
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('users.new') }}">
-                                <i class="bi bi-person-plus"></i> Add User
-                            </a></li>
-                        </ul>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link" href="/settings"><i class="bi bi-gear"></i> Settings</a>
-                    </li>
-                    {% endif %}
-                    
-                    <!-- User Profile Dropdown -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-circle"></i> {{ current_user.username }}
-                        </a>
+                    <!-- User Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center" 
+                                type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar me-2">
+                                <i class="bi bi-person-circle fs-4"></i>
+                            </div>
+                            <span class="d-none d-md-inline">{{ current_user.username }}</span>
+                        </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="{{ url_for('users.profile') }}">
                                 <i class="bi bi-person"></i> My Profile
@@ -126,34 +50,204 @@
                                 <i class="bi bi-box-arrow-right"></i> Logout
                             </a></li>
                         </ul>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
+    </header>
+
+    <div class="d-flex">
+        <!-- Left Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <!-- Dashboard -->
+                <a href="/" class="sidebar-link {% if request.endpoint == 'index' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- Members Section (Collapsible) -->
+                <div class="sidebar-section collapsible-section">
+                    <div class="sidebar-section-header">
+                        <i class="bi bi-people"></i>
+                        <span>Members</span>
+                        <i class="bi bi-chevron-right chevron-icon"></i>
+                    </div>
+                    <div class="sidebar-section-content">
+                        <a href="{{ url_for('members.list') }}" class="sidebar-link {% if request.endpoint == 'members.list' %}active{% endif %}">
+                            <i class="bi bi-list"></i>
+                            <span>View Members</span>
+                        </a>
+                        <a href="{{ url_for('members.new') }}" class="sidebar-link {% if request.endpoint == 'members.new' %}active{% endif %}">
+                            <i class="bi bi-person-plus"></i>
+                            <span>Add Member</span>
+                        </a>
+                        <a href="{{ url_for('members.import_members') }}" class="sidebar-link {% if request.endpoint == 'members.import_members' %}active{% endif %}">
+                            <i class="bi bi-upload"></i>
+                            <span>Import Members</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Projects Section (Collapsible) -->
+                <div class="sidebar-section collapsible-section">
+                    <div class="sidebar-section-header">
+                        <i class="bi bi-kanban"></i>
+                        <span>Projects</span>
+                        <i class="bi bi-chevron-right chevron-icon"></i>
+                    </div>
+                    <div class="sidebar-section-content">
+                        <a href="{{ url_for('projects.list') }}" class="sidebar-link {% if request.endpoint == 'projects.list' %}active{% endif %}">
+                            <i class="bi bi-list"></i>
+                            <span>View Projects</span>
+                        </a>
+                        <a href="{{ url_for('projects.new') }}" class="sidebar-link {% if request.endpoint == 'projects.new' %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>Add Project</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Transactions Section (Collapsible) -->
+                <div class="sidebar-section collapsible-section">
+                    <div class="sidebar-section-header">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>Transactions</span>
+                        <i class="bi bi-chevron-right chevron-icon"></i>
+                    </div>
+                    <div class="sidebar-section-content">
+                        <a href="{{ url_for('transactions.list') }}" class="sidebar-link {% if request.endpoint == 'transactions.list' %}active{% endif %}">
+                            <i class="bi bi-list"></i>
+                            <span>View Transactions</span>
+                        </a>
+                        <a href="{{ url_for('transactions.new') }}" class="sidebar-link {% if request.endpoint == 'transactions.new' %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>New Transaction</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Reports -->
+                <a href="/reports" class="sidebar-link {% if request.endpoint and 'report' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>Reports</span>
+                </a>
+
+                {% if current_user.role in ['Admin', 'Treasurer'] %}
+                <!-- Chart of Accounts -->
+                <a href="{{ url_for('chart_of_accounts.list') }}" class="sidebar-link {% if request.endpoint == 'chart_of_accounts.list' %}active{% endif %}">
+                    <i class="bi bi-journal-text"></i>
+                    <span>Chart of Accounts</span>
+                </a>
+                {% endif %}
+
+                {% if current_user.role == 'Admin' %}
+                <!-- Administration Section (Collapsible) -->
+                <div class="sidebar-section collapsible-section">
+                    <div class="sidebar-section-header">
+                        <i class="bi bi-gear-fill"></i>
+                        <span>Administration</span>
+                        <i class="bi bi-chevron-right chevron-icon"></i>
+                    </div>
+                    <div class="sidebar-section-content">
+                        <a href="{{ url_for('users.list') }}" class="sidebar-link {% if request.endpoint == 'users.list' %}active{% endif %}">
+                            <i class="bi bi-person-gear"></i>
+                            <span>Manage Users</span>
+                        </a>
+                        <a href="/settings" class="sidebar-link {% if request.endpoint == 'settings' %}active{% endif %}">
+                            <i class="bi bi-gear"></i>
+                            <span>Settings</span>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Main Content Area (shown when authenticated) -->
+        <main class="main-content">
     {% endif %}
+    
+    <!-- Flash Messages (always shown) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'danger' else 'info-circle' }}"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
-    <div class="container-fluid">
-        <div class="row">
-            <main class="col-md-12 ms-sm-auto px-md-4 main-content">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show mt-3" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-
-                {% block content %}{% endblock %}
-            </main>
-        </div>
+    <!-- Page Content (SINGLE CONTENT BLOCK) -->
+    <div class="content-wrapper">
+        {% block content %}{% endblock %}
     </div>
 
+    {% if current_user.is_authenticated %}
+        </main>
+    </div>
+    {% endif %}
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/validation.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sidebar toggle for mobile
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                });
+                
+                // Close sidebar when clicking outside on mobile
+                document.addEventListener('click', function(event) {
+                    if (window.innerWidth < 768) {
+                        if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                            sidebar.classList.remove('show');
+                        }
+                    }
+                });
+            }
+            
+            // Keep section expanded if it contains active link
+            const collapsibleSections = document.querySelectorAll('.collapsible-section');
+            collapsibleSections.forEach(section => {
+                const activeLink = section.querySelector('.sidebar-link.active');
+                if (activeLink) {
+                    section.classList.add('active');
+                }
+            });
+            
+            // On mobile/tablet, click to toggle instead of hover
+            if (window.innerWidth < 992) {
+                collapsibleSections.forEach(section => {
+                    const header = section.querySelector('.sidebar-section-header');
+                    if (header) {
+                        header.addEventListener('click', function(e) {
+                            // Don't trigger if clicking on a link inside
+                            if (e.target.closest('.sidebar-link')) return;
+                            
+                            // Close other sections
+                            collapsibleSections.forEach(otherSection => {
+                                if (otherSection !== section) {
+                                    otherSection.classList.remove('active');
+                                }
+                            });
+                            
+                            // Toggle this section
+                            section.classList.toggle('active');
+                        });
+                    }
+                });
+            }
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

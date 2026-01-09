@@ -19,9 +19,15 @@
                     <button class="sidebar-toggle btn btn-link d-md-none" id="sidebarToggle">
                         <i class="bi bi-list fs-4"></i>
                     </button>
-                    <h5 class="mb-0 ms-3 d-none d-md-block text-primary fw-bold">
-                        <i class="bi bi-shield-fill-check"></i> Knights of Columbus Accounting
-                    </h5>
+                    <div class="ms-3 d-none d-md-block">
+                        <div class="brand-header">
+                            <i class="bi bi-shield-fill-check brand-icon"></i>
+                            <div class="brand-text">
+                                <div class="brand-name">REGALIA</div>
+                                <div class="brand-subtitle">A CARES Edition for the Knights of Columbus</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="d-flex align-items-center">
@@ -188,6 +194,14 @@
     </div>
 
     {% if current_user.is_authenticated %}
+            <!-- Footer -->
+            <footer class="app-footer">
+                <div class="footer-content">
+                    <a href="/static/cares-info.html" target="_blank" class="footer-link">
+                        <i class="bi bi-info-circle"></i> About CARES
+                    </a>
+                </div>
+            </footer>
         </main>
     </div>
     {% endif %}

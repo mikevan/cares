@@ -3,29 +3,59 @@
 {% block title %}Login - REGALIA{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6 col-lg-4">
-        <div class="card">
-            <div class="card-header text-center">
-                <h4><i class="bi bi-shield-fill-check"></i> REGALIA</h4>
-                <p class="mb-0 small">A CARES Edition for the Knights of Columbus</p>
+<div class="login-container">
+    <div class="login-card">
+        <!-- Logo/Header -->
+        <div class="login-header">
+            <div class="login-logo">
+                <i class="bi bi-shield-fill-check"></i>
             </div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" required autofocus>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                </form>
+            <h1 class="login-title">REGALIA</h1>
+            <p class="login-subtitle">A CARES Edition for the Knights of Columbus</p>
+        </div>
+
+        <!-- Login Form -->
+        <form method="POST" class="login-form">
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <div class="input-with-icon">
+                    <i class="bi bi-person"></i>
+                    <input type="text" 
+                           class="form-control" 
+                           id="username" 
+                           name="username" 
+                           placeholder="Enter your username"
+                           required 
+                           autofocus>
+                </div>
             </div>
-            <div class="card-footer text-center text-muted">
-                <small>Default login: admin / admin123</small>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-with-icon">
+                    <i class="bi bi-lock"></i>
+                    <input type="password" 
+                           class="form-control" 
+                           id="password" 
+                           name="password" 
+                           placeholder="Enter your password"
+                           required>
+                </div>
             </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 login-button">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+            </button>
+        </form>
+
+        <!-- Footer -->
+        <div class="login-footer">
+            <p class="text-muted mb-0">
+                <i class="bi bi-shield-check"></i> Secure Login
+            </p>
+            <p class="text-muted small mt-2">
+                Default: admin / admin123
+            </p>
         </div>
     </div>
 </div>

@@ -1284,10 +1284,16 @@ body {
     margin-bottom: 2rem;
 }
 
+.login-logo {
+    margin-bottom: 1rem;
+}
+
+.login-logo i,
 .login-header i {
     font-size: 4rem;
     color: var(--brand-primary);
-    margin-bottom: 1rem;
+    margin-bottom: 0;
+    display: inline-block;
 }
 
 .login-title {
@@ -1299,6 +1305,72 @@ body {
 
 .login-subtitle {
     color: #6b7280;
+    font-size: 0.9375rem;
+}
+
+.login-container {
+    max-width: 450px;
+    width: 100%;
+    padding: 2rem;
+}
+
+.login-form {
+    margin-top: 2rem;
+}
+
+.login-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.login-form .form-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.input-with-icon {
+    position: relative;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 1.125rem;
+    z-index: 10;
+}
+
+.input-with-icon .form-control {
+    padding-left: 3rem;
+}
+
+.login-button {
+    margin-top: 2rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+}
+
+.login-button i {
+    margin-right: 0.5rem;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.login-footer p {
+    font-size: 0.875rem;
+}
+
+.login-footer .small {
+    font-size: 0.75rem;
 }
 
 /* ============================================

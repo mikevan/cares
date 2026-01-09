@@ -16,7 +16,7 @@ if __name__ == '__main__':
         if not tables:
             print("No tables found. Initializing database...")
             from app import init_database
-            init_database()
+            init_database(app)
             print("✓ Database initialization complete!")
             print("✓ Tables created and default data loaded.")
         else:

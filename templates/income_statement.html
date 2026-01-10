@@ -23,6 +23,28 @@
 
         <h4 class="text-center">{{ data.organization }}</h4>
         <h5 class="text-center text-muted">Statement of Activities</h5>
+        
+        <div class="d-flex justify-content-center mb-2">
+            <form class="me-2" method="get" action="{{ url_for('reports.income_statement') }}">
+                <div class="input-group input-group-sm">
+                    <label class="input-group-text">Year</label>
+                    <select class="form-select" name="year">
+                        {% for y in available_years %}
+                        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-outline-primary" type="submit">View</button>
+                </div>
+            </form>
+            {% if available_years %}
+            <form method="post" action="{{ url_for('users.set_default_year') }}">
+                <input type="hidden" name="default_report_year" value="{{ year }}" />
+                <input type="hidden" name="next" value="{{ request.path }}" />
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Set {{ year }} as my default</button>
+            </form>
+            {% endif %}
+        </div>
+
         <p class="text-center">{{ data.period }}</p>
         
         <hr>

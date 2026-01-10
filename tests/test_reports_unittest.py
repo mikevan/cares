@@ -22,6 +22,17 @@ class TestReports(unittest.TestCase):
 
         # login
         self.client.post('/login', data={'username':'admin','password':'admin123'}, follow_redirects=True)
+        # Ensure test user has no pre-existing default_report_year to avoid flakiness
+        from models import User, JournalEntry
+        admin = User.query.filter_by(username='admin').first()
+        if admin:
+            admin.default_report_year = None
+            db.session.commit()
+
+        # Remove any previously created high-year test entries so tests are deterministic
+        # (we consider years >= 2050 as test artifacts)
+        JournalEntry.query.filter(JournalEntry.entry_date >= '2050-01-01').delete()
+        db.session.commit()
 
     def tearDown(self):
         self.ctx.pop()
@@ -47,6 +58,20 @@ class TestReports(unittest.TestCase):
         data = r.get_json()
         self.assertIn('2097', data['period'])
         self.assertGreaterEqual(data['revenues']['total'], 123.45)
+
+        # UI should include a year selector and include 2097
+        r_ui = self.client.get('/reports/income-statement')
+        self.assertEqual(r_ui.status_code, 200)
+        body = r_ui.get_data(as_text=True)
+        self.assertIn('name="year"', body)
+        self.assertIn('2097', body)
+
+        # Set as my default via new endpoint and verify report default honors it
+        r_set = self.client.post('/users/set-default-year', data={'default_report_year': '2097', 'next': '/reports/income-statement'}, follow_redirects=True)
+        self.assertEqual(r_set.status_code, 200)
+        r_default = self.client.get('/reports/income-statement')
+        self.assertEqual(r_default.status_code, 200)
+        self.assertIn('2097', r_default.get_data(as_text=True))
 
         # cleanup
         JournalEntryLine.query.filter_by(journal_entry_id=je.id).delete()
@@ -77,6 +102,13 @@ class TestReports(unittest.TestCase):
         self.assertIn('2098', data['period'])
         self.assertNotEqual(data['net_change_in_cash'], 0)
 
+        # UI should include a year selector and include 2098
+        r_ui = self.client.get('/reports/cash-flow')
+        self.assertEqual(r_ui.status_code, 200)
+        body = r_ui.get_data(as_text=True)
+        self.assertIn('name="year"', body)
+        self.assertIn('2098', body)
+
         # cleanup
         JournalEntryLine.query.filter_by(journal_entry_id=je.id).delete()
         JournalEntry.query.filter_by(id=je.id).delete()
@@ -105,6 +137,13 @@ class TestReports(unittest.TestCase):
         data = r.get_json()
         self.assertIn('2099', data['period'])
         self.assertGreaterEqual(data['totals']['total'], 500)
+
+        # UI should include a year selector and include 2099
+        r_ui = self.client.get('/reports/functional-expenses')
+        self.assertEqual(r_ui.status_code, 200)
+        body = r_ui.get_data(as_text=True)
+        self.assertIn('name="year"', body)
+        self.assertIn('2099', body)
 
         # cleanup
         JournalEntryLine.query.filter_by(journal_entry_id=je.id).delete()

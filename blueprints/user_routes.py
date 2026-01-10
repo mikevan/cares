@@ -328,4 +328,22 @@ def profile():
             flash(f'Error updating profile: {str(e)}', 'danger')
             db.session.rollback()
 
+
+@users_bp.route('/set-default-year', methods=['POST'])
+@login_required
+def set_default_year():
+    """Set the current user's default report year and redirect back"""
+    try:
+        val = request.form.get('default_report_year')
+        current_user.default_report_year = int(val) if val else None
+        db.session.commit()
+        flash('Default report year updated.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating default year: {e}', 'danger')
+
+    # Redirect back to the page that submitted the form, or to reports list
+    next_url = request.form.get('next') or request.args.get('next') or request.referrer or url_for('reports.list')
+    return redirect(next_url)
+
     return render_template('user_profile.html', user=current_user, years=years)

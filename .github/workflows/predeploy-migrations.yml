@@ -1,4 +1,4 @@
-name: CI: Validate Migrations & Pre-deploy
+name: "CI: Validate Migrations & Pre-deploy"
 
 on:
   pull_request:

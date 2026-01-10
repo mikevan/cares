@@ -513,16 +513,6 @@ python scripts/run_migrations.py
 alembic upgrade head
 ```
 
-### CI: Pre-deploy migrations (recommended)
-We provide a GitHub Actions workflow that validates migrations on PRs and can run migrations on push to `main` if a `PRODUCTION_DATABASE_URL` secret is configured. The workflow will:
-
-- Run Alembic migrations against a test Postgres service on pull requests to ensure migrations apply cleanly.
-- Run the same migrations against your production DB on push to `main` when `PRODUCTION_DATABASE_URL` is set in the repository Secrets.
-- Run a smoke check which verifies that `users.default_report_year` exists to prevent start-time crashes.
-
-To enable automatic production migrations:
-1. Add a repository secret named `PRODUCTION_DATABASE_URL` with your production database URL (e.g. `postgresql://user:pass@host/dbname`).
-2. Push to `main` — the `run-prod-migrations` job will execute and run migrations against the DB in that secret. If you prefer manual control, leave the secret unset and run `python scripts/run_migrations.py` manually on the primary DB before restart.
 
 Notes:
 - The included `scripts/startup_check_and_migrate.py` is a safety net that attempts to add a required column if missing; however, prefer running Alembic during deployment so schema changes are versioned and auditable.

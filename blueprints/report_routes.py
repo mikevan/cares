@@ -69,15 +69,24 @@ def balance_sheet():
 @login_required
 def income_statement():
     """Display income statement report"""
-    # If the caller provides a year explicitly, use it; otherwise, default to the most recent year with posted data
+    # If the caller provides a year explicitly, use it; otherwise, prefer the user's default only if it has data, else default to the most recent year with posted data
     year_param = request.args.get('year', None, type=int)
+
+    # compute available years early so we can validate a saved default
+    available_years = _get_available_years(current_user.organization_id)
+
     if year_param is None:
-        # Query for the latest year which has posted journal entries for this organization
-        latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
-        try:
-            year = int(latest_year) if latest_year else date.today().year
-        except Exception:
-            year = date.today().year
+        if current_user.default_report_year and int(current_user.default_report_year) in available_years:
+            year = int(current_user.default_report_year)
+            current_app.logger.debug(f"Using user default year={year} for org={current_user.organization_id}")
+        else:
+            # Query for the latest year which has posted journal entries for this organization
+            # FIXED: Changed from strftime to extract for PostgreSQL compatibility
+            latest_year = db.session.query(func.max(func.extract('year', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            try:
+                year = int(latest_year) if latest_year else date.today().year
+            except Exception:
+                year = date.today().year
     else:
         year = year_param
 
@@ -105,11 +114,16 @@ def income_statement():
 def cash_flow():
     """Display cash flow statement report"""
     year_param = request.args.get('year', None, type=int)
+
+    # compute available years early so we can validate a saved default
+    available_years = _get_available_years(current_user.organization_id)
+
     if year_param is None:
-        if current_user.default_report_year:
+        if current_user.default_report_year and int(current_user.default_report_year) in available_years:
             year = int(current_user.default_report_year)
         else:
-            latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            # FIXED: Changed from strftime to extract for PostgreSQL compatibility
+            latest_year = db.session.query(func.max(func.extract('year', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
             try:
                 year = int(latest_year) if latest_year else date.today().year
             except Exception:
@@ -119,7 +133,7 @@ def cash_flow():
 
     start_date = f'{year}-01-01'
     end_date = f'{year}-12-31'
-    
+
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.cash_flow_statement(start_date, end_date)
 
@@ -129,7 +143,7 @@ def cash_flow():
 
     current_app.logger.debug(f"Cash flow for org={current_user.organization_id} year={year} -> net_change={data.get('net_change_in_cash')}")
 
-    return render_template('cash_flow.html', data=data, year=year)
+    return render_template('cash_flow.html', data=data, year=year, available_years=available_years)
 
 @reports_bp.route('/functional-expenses')
 @login_required
@@ -140,7 +154,8 @@ def functional_expenses():
         if current_user.default_report_year:
             year = int(current_user.default_report_year)
         else:
-            latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            # FIXED: Changed from strftime to extract for PostgreSQL compatibility
+            latest_year = db.session.query(func.max(func.extract('year', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
             try:
                 year = int(latest_year) if latest_year else date.today().year
             except Exception:
@@ -151,6 +166,9 @@ def functional_expenses():
     start_date = f'{year}-01-01'
     end_date = f'{year}-12-31'
     
+    # Available years for UI dropdown
+    available_years = _get_available_years(current_user.organization_id)
+
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.functional_expenses(start_date, end_date)
 
@@ -160,4 +178,4 @@ def functional_expenses():
 
     current_app.logger.debug(f"Functional expenses for org={current_user.organization_id} year={year} -> total_expenses={data.get('total_expenses')}")
 
-    return render_template('functional_expenses.html', data=data, year=year)
+    return render_template('functional_expenses.html', data=data, year=year, available_years=available_years)

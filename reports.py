@@ -2,7 +2,7 @@
 Financial Reports Generator
 Generates FASB ASC 958 compliant financial statements
 """
-from models import JournalEntry, JournalEntryLine, ChartOfAccounts, Organization
+from models import JournalEntry, JournalEntryLine, ChartOfAccounts, Organization, Project
 from flask import current_app
 from sqlalchemy import func, and_
 from datetime import datetime, date, timedelta
@@ -25,21 +25,25 @@ class FinancialReports:
         if not account:
             return Decimal('0')
         
-        # Sum debits and credits
+        # Sum debits and credits - filter by organization through Project
         debits = self.session.query(func.sum(JournalEntryLine.debit_amount))\
             .join(JournalEntry)\
+            .join(Project)\
             .filter(
                 JournalEntryLine.account_id == account.id,
                 JournalEntry.entry_date <= as_of_date,
-                JournalEntry.status == 'Posted'
+                JournalEntry.status == 'Posted',
+                Project.organization_id == self.org_id
             ).scalar() or Decimal('0')
         
         credits = self.session.query(func.sum(JournalEntryLine.credit_amount))\
             .join(JournalEntry)\
+            .join(Project)\
             .filter(
                 JournalEntryLine.account_id == account.id,
                 JournalEntry.entry_date <= as_of_date,
-                JournalEntry.status == 'Posted'
+                JournalEntry.status == 'Posted',
+                Project.organization_id == self.org_id
             ).scalar() or Decimal('0')
         
         # Calculate balance based on normal balance
@@ -128,21 +132,25 @@ class FinancialReports:
         for account in revenue_accounts:
             amount = self.session.query(func.sum(JournalEntryLine.credit_amount))\
                 .join(JournalEntry)\
+                .join(Project)\
                 .filter(
                     JournalEntryLine.account_id == account.id,
                     JournalEntry.entry_date >= start_date,
                     JournalEntry.entry_date <= end_date,
-                    JournalEntry.status == 'Posted'
+                    JournalEntry.status == 'Posted',
+                    Project.organization_id == self.org_id
                 ).scalar() or Decimal('0')
             
             # Subtract debits (returns/adjustments)
             debits = self.session.query(func.sum(JournalEntryLine.debit_amount))\
                 .join(JournalEntry)\
+                .join(Project)\
                 .filter(
                     JournalEntryLine.account_id == account.id,
                     JournalEntry.entry_date >= start_date,
                     JournalEntry.entry_date <= end_date,
-                    JournalEntry.status == 'Posted'
+                    JournalEntry.status == 'Posted',
+                    Project.organization_id == self.org_id
                 ).scalar() or Decimal('0')
             
             net_amount = amount - debits
@@ -165,21 +173,25 @@ class FinancialReports:
         for account in expense_accounts:
             amount = self.session.query(func.sum(JournalEntryLine.debit_amount))\
                 .join(JournalEntry)\
+                .join(Project)\
                 .filter(
                     JournalEntryLine.account_id == account.id,
                     JournalEntry.entry_date >= start_date,
                     JournalEntry.entry_date <= end_date,
-                    JournalEntry.status == 'Posted'
+                    JournalEntry.status == 'Posted',
+                    Project.organization_id == self.org_id
                 ).scalar() or Decimal('0')
             
             # Subtract credits (reversals)
             credits = self.session.query(func.sum(JournalEntryLine.credit_amount))\
                 .join(JournalEntry)\
+                .join(Project)\
                 .filter(
                     JournalEntryLine.account_id == account.id,
                     JournalEntry.entry_date >= start_date,
                     JournalEntry.entry_date <= end_date,
-                    JournalEntry.status == 'Posted'
+                    JournalEntry.status == 'Posted',
+                    Project.organization_id == self.org_id
                 ).scalar() or Decimal('0')
             
             net_amount = amount - credits
@@ -282,21 +294,25 @@ class FinancialReports:
             # Calculate total expense for this account
             amount = self.session.query(func.sum(JournalEntryLine.debit_amount))\
                 .join(JournalEntry)\
+                .join(Project)\
                 .filter(
                     JournalEntryLine.account_id == account.id,
                     JournalEntry.entry_date >= start_date,
                     JournalEntry.entry_date <= end_date,
-                    JournalEntry.status == 'Posted'
+                    JournalEntry.status == 'Posted',
+                    Project.organization_id == self.org_id
                 ).scalar() or Decimal('0')
             
             # Subtract credits (reversals)
             credits = self.session.query(func.sum(JournalEntryLine.credit_amount))\
                 .join(JournalEntry)\
+                .join(Project)\
                 .filter(
                     JournalEntryLine.account_id == account.id,
                     JournalEntry.entry_date >= start_date,
                     JournalEntry.entry_date <= end_date,
-                    JournalEntry.status == 'Posted'
+                    JournalEntry.status == 'Posted',
+                    Project.organization_id == self.org_id
                 ).scalar() or Decimal('0')
             
             net_amount = amount - credits

@@ -44,10 +44,10 @@ def new():
     """Create new user"""
     # Compute available years for selection
     from models import JournalEntry, Project
-    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+    years = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
         .join(Project, JournalEntry.project_id == Project.id)\
         .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
-        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+        .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
     years = [int(y[0]) for y in years if y[0]]
 
     if request.method == 'POST':
@@ -117,10 +117,10 @@ def edit(id):
 
     # Compute available years
     from models import JournalEntry, Project
-    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+    years = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
         .join(Project, JournalEntry.project_id == Project.id)\
         .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
-        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+        .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
     years = [int(y[0]) for y in years if y[0]]
     
     if request.method == 'POST':
@@ -306,10 +306,10 @@ def profile():
     from models import JournalEntry, Project
 
     # Compute available years with Posted entries for this user's organization
-    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+    years = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
         .join(Project, JournalEntry.project_id == Project.id)\
         .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
-        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+        .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
     years = [int(y[0]) for y in years if y[0]]
 
     if current_user.id != current_user.id:

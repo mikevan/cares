@@ -21,19 +21,11 @@ def _get_available_years(org_id):
     """Return a list of years (int) which have Posted JournalEntry rows for the org"""
     # Use SQLite strftime or SQL extract depending on dialect
     try:
-        dialect = db.engine.dialect.name
-        if dialect == 'postgresql' or dialect == 'mysql':
-            years_q = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
-                .join(Project, JournalEntry.project_id == Project.id)\
-                .filter(Project.organization_id == org_id, JournalEntry.status == 'Posted')\
-                .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
-            years = [int(int(y[0])) for y in years_q if y[0]]
-        else:
-            years_q = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
-                .join(Project, JournalEntry.project_id == Project.id)\
-                .filter(Project.organization_id == org_id, JournalEntry.status == 'Posted')\
-                .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
-            years = [int(y[0]) for y in years_q if y[0]]
+        years_q = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
+            .join(Project, JournalEntry.project_id == Project.id)\
+            .filter(Project.organization_id == org_id, JournalEntry.status == 'Posted')\
+            .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
+        years = [int(y[0]) for y in years_q if y[0]]
     except Exception:
         years = []
     return years
@@ -81,7 +73,7 @@ def income_statement():
             current_app.logger.debug(f"Using user default year={year} for org={current_user.organization_id}")
         else:
             # Query for the latest year which has posted journal entries for this organization
-            latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            latest_year = db.session.query(func.max(func.extract('year', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
             try:
                 year = int(latest_year) if latest_year else date.today().year
             except Exception:
@@ -121,7 +113,7 @@ def cash_flow():
         if current_user.default_report_year and int(current_user.default_report_year) in available_years:
             year = int(current_user.default_report_year)
         else:
-            latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            latest_year = db.session.query(func.max(func.extract('year', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
             try:
                 year = int(latest_year) if latest_year else date.today().year
             except Exception:
@@ -152,7 +144,7 @@ def functional_expenses():
         if current_user.default_report_year:
             year = int(current_user.default_report_year)
         else:
-            latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            latest_year = db.session.query(func.max(func.extract('year', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
             try:
                 year = int(latest_year) if latest_year else date.today().year
             except Exception:

@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, Organization, Project, ChartOfAccounts
 from datetime import datetime
+from sqlalchemy import text, inspect
 
 # Create the blueprint
 auth_bp = Blueprint('auth', __name__)
@@ -50,6 +51,50 @@ def init_database(app):
     """Initialize database with default data"""
     with app.app_context():
         db.create_all()
+
+        # Ensure the users table has the `default_report_year` column; add it if missing
+        try:
+            inspector = inspect(db.engine)
+            cols = [c['name'] for c in inspector.get_columns('users')]
+            if 'default_report_year' not in cols:
+                app.logger.info('users.default_report_year not found; attempting to add column')
+                try:
+                    dialect = db.engine.dialect.name
+                    if dialect == 'postgresql' or dialect == 'mysql':
+                        # Use IF NOT EXISTS where supported to avoid race errors
+                        alter_sql = "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_report_year INTEGER"
+                    else:
+                        # SQLite and other dialects: standard ADD COLUMN
+                        alter_sql = "ALTER TABLE users ADD COLUMN default_report_year INTEGER"
+
+                    db.session.execute(text(alter_sql))
+                    db.session.commit()
+
+                    # Re-create inspector to refresh metadata and verify the column was added
+                    inspector = inspect(db.engine)
+                    cols2 = [c['name'] for c in inspector.get_columns('users')]
+                    if 'default_report_year' in cols2:
+                        app.logger.info('Added users.default_report_year column successfully')
+                    else:
+                        app.logger.error('Failed to add users.default_report_year column (still missing)')
+                        raise RuntimeError('Failed to add users.default_report_year column')
+                except Exception as e:
+                    app.logger.exception(f'Attempt to add users.default_report_year failed: {e}')
+                    # Re-create inspector and re-check in case another process added the column concurrently
+                    try:
+                        inspector = inspect(db.engine)
+                        cols2 = [c['name'] for c in inspector.get_columns('users')]
+                        if 'default_report_year' in cols2:
+                            app.logger.info('users.default_report_year appears to have been added by another process')
+                            # success
+                        else:
+                            # Not present after retry -> raise so ops can run a migration manually
+                            raise
+                    except Exception:
+                        raise
+        except Exception as e:
+            app.logger.exception(f'Could not inspect users table for default_report_year column: {e}')
+            raise
         
         # Create default organization if none exists
         if not Organization.query.first():

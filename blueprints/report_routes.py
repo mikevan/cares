@@ -3,17 +3,41 @@ Financial Reports Blueprint
 Handles all financial report routes
 """
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required, current_user
-from models import db
+from models import db, Project, JournalEntry, ChartOfAccounts
 from reports import FinancialReports
 from datetime import date
+from sqlalchemy import func
 
 # Create the blueprint
 reports_bp = Blueprint('reports', __name__, url_prefix='/reports')
 
 
 # ==================== REPORTS ====================
+
+
+def _get_available_years(org_id):
+    """Return a list of years (int) which have Posted JournalEntry rows for the org"""
+    # Use SQLite strftime or SQL extract depending on dialect
+    try:
+        dialect = db.engine.dialect.name
+        if dialect == 'postgresql' or dialect == 'mysql':
+            years_q = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
+                .join(Project, JournalEntry.project_id == Project.id)\
+                .filter(Project.organization_id == org_id, JournalEntry.status == 'Posted')\
+                .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
+            years = [int(int(y[0])) for y in years_q if y[0]]
+        else:
+            years_q = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+                .join(Project, JournalEntry.project_id == Project.id)\
+                .filter(Project.organization_id == org_id, JournalEntry.status == 'Posted')\
+                .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+            years = [int(y[0]) for y in years_q if y[0]]
+    except Exception:
+        years = []
+    return years
+
 
 @reports_bp.route('/')
 @login_required
@@ -29,6 +53,15 @@ def balance_sheet():
     as_of_date = request.args.get('date', date.today().strftime('%Y-%m-%d'))
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.balance_sheet(as_of_date)
+
+    # Debugging support: if ?debug=1 or ?format=json is present return JSON and log details
+    if request.args.get('debug') == '1' or request.args.get('format') == 'json':
+        current_app.logger.info(f"Balance sheet debug for org={current_user.organization_id} date={as_of_date} -> assets={len(data.get('assets', {}).get('accounts', []))}, liabilities={len(data.get('liabilities', {}).get('accounts', []))}, net_assets={len(data.get('net_assets', {}).get('accounts', []))}")
+        return jsonify(data)
+
+    # Log counts to help diagnose blank UI reports
+    current_app.logger.debug(f"Balance sheet for org={current_user.organization_id} date={as_of_date} -> assets={len(data.get('assets', {}).get('accounts', []))}, liabilities={len(data.get('liabilities', {}).get('accounts', []))}, net_assets={len(data.get('net_assets', {}).get('accounts', []))}")
+
     return render_template('balance_sheet.html', data=data, as_of_date=as_of_date)
 
 
@@ -36,36 +69,95 @@ def balance_sheet():
 @login_required
 def income_statement():
     """Display income statement report"""
-    year = request.args.get('year', date.today().year, type=int)
+    # If the caller provides a year explicitly, use it; otherwise, default to the most recent year with posted data
+    year_param = request.args.get('year', None, type=int)
+    if year_param is None:
+        # Query for the latest year which has posted journal entries for this organization
+        latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+        try:
+            year = int(latest_year) if latest_year else date.today().year
+        except Exception:
+            year = date.today().year
+    else:
+        year = year_param
+
     start_date = f'{year}-01-01'
     end_date = f'{year}-12-31'
     
+    # Available years for UI dropdown
+    available_years = _get_available_years(current_user.organization_id)
+
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.income_statement(start_date, end_date)
-    return render_template('income_statement.html', data=data, year=year)
+
+    # Debugging support: return JSON if requested and log counts
+    if request.args.get('debug') == '1' or request.args.get('format') == 'json':
+        current_app.logger.info(f"Income statement debug for org={current_user.organization_id} year={year} -> revenues={len(data.get('revenues', {}).get('accounts', []))}, expenses={len(data.get('expenses', {}).get('accounts', []))}")
+        return jsonify(data)
+
+    current_app.logger.debug(f"Income statement for org={current_user.organization_id} year={year} -> revenues={len(data.get('revenues', {}).get('accounts', []))}, expenses={len(data.get('expenses', {}).get('accounts', []))}")
+
+    return render_template('income_statement.html', data=data, year=year, available_years=available_years)
 
 
 @reports_bp.route('/cash-flow')
 @login_required
 def cash_flow():
     """Display cash flow statement report"""
-    year = request.args.get('year', date.today().year, type=int)
+    year_param = request.args.get('year', None, type=int)
+    if year_param is None:
+        if current_user.default_report_year:
+            year = int(current_user.default_report_year)
+        else:
+            latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            try:
+                year = int(latest_year) if latest_year else date.today().year
+            except Exception:
+                year = date.today().year
+    else:
+        year = year_param
+
     start_date = f'{year}-01-01'
     end_date = f'{year}-12-31'
     
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.cash_flow_statement(start_date, end_date)
-    return render_template('cash_flow.html', data=data, year=year)
 
+    if request.args.get('debug') == '1' or request.args.get('format') == 'json':
+        current_app.logger.info(f"Cash flow debug for org={current_user.organization_id} year={year} -> net_change={data.get('net_change_in_cash')}")
+        return jsonify(data)
+
+    current_app.logger.debug(f"Cash flow for org={current_user.organization_id} year={year} -> net_change={data.get('net_change_in_cash')}")
+
+    return render_template('cash_flow.html', data=data, year=year)
 
 @reports_bp.route('/functional-expenses')
 @login_required
 def functional_expenses():
     """Display functional expenses report"""
-    year = request.args.get('year', date.today().year, type=int)
+    year_param = request.args.get('year', None, type=int)
+    if year_param is None:
+        if current_user.default_report_year:
+            year = int(current_user.default_report_year)
+        else:
+            latest_year = db.session.query(func.max(func.strftime('%Y', JournalEntry.entry_date))).join(Project, JournalEntry.project_id == Project.id).filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted').scalar()
+            try:
+                year = int(latest_year) if latest_year else date.today().year
+            except Exception:
+                year = date.today().year
+    else:
+        year = year_param
+
     start_date = f'{year}-01-01'
     end_date = f'{year}-12-31'
     
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.functional_expenses(start_date, end_date)
+
+    if request.args.get('debug') == '1' or request.args.get('format') == 'json':
+        current_app.logger.info(f"Functional expenses debug for org={current_user.organization_id} year={year} -> total_expenses={data.get('total_expenses')}")
+        return jsonify(data)
+
+    current_app.logger.debug(f"Functional expenses for org={current_user.organization_id} year={year} -> total_expenses={data.get('total_expenses')}")
+
     return render_template('functional_expenses.html', data=data, year=year)

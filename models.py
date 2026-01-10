@@ -52,6 +52,7 @@ class User(UserMixin, db.Model):
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+    default_report_year = db.Column(db.Integer, nullable=True)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

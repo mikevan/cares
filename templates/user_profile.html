@@ -100,6 +100,24 @@
                 
                 <hr class="my-4">
                 
+                <form method="POST" class="mb-3">
+                    <div class="mb-3 row">
+                        <label class="col-md-4 col-form-label">Default Report Year</label>
+                        <div class="col-md-8">
+                            <select name="default_report_year" class="form-select">
+                                <option value="">Auto (most recent)</option>
+                                {% for y in years %}
+                                <option value="{{ y }}" {{ 'selected' if user.default_report_year == y else '' }}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="small text-muted mt-1">This year will be used for income/cash/functional reports when you don't specify a year.</div>
+                        </div>
+                    </div>
+                    <div class="d-grid d-md-flex justify-content-md-end">
+                        <button class="btn btn-primary btn-sm" type="submit">Save Preference</button>
+                    </div>
+                </form>
+
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i> 
                     To update your email or other information, please contact your system administrator.

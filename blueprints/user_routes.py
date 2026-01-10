@@ -6,6 +6,7 @@ Handles all user-related routes including CRUD and password management
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models import db, User, Organization
+from sqlalchemy import func
 from functools import wraps
 
 # Create the blueprint
@@ -41,6 +42,14 @@ def list():
 @admin_required
 def new():
     """Create new user"""
+    # Compute available years for selection
+    from models import JournalEntry, Project
+    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+        .join(Project, JournalEntry.project_id == Project.id)\
+        .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
+        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+    years = [int(y[0]) for y in years if y[0]]
+
     if request.method == 'POST':
         try:
             # Validate username uniqueness
@@ -77,6 +86,9 @@ def new():
                 active=True
             )
             user.set_password(password)
+            # Set default_report_year if provided
+            val = request.form.get('default_report_year')
+            user.default_report_year = int(val) if val else None
             
             db.session.add(user)
             db.session.commit()
@@ -88,7 +100,7 @@ def new():
             flash(f'Error creating user: {str(e)}', 'danger')
             db.session.rollback()
     
-    return render_template('user_form.html', user=None)
+    return render_template('user_form.html', user=None, years=years)
 
 
 @users_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
@@ -102,6 +114,14 @@ def edit(id):
     if user.organization_id != current_user.organization_id:
         flash('Permission denied.', 'danger')
         return redirect(url_for('users.list'))
+
+    # Compute available years
+    from models import JournalEntry, Project
+    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+        .join(Project, JournalEntry.project_id == Project.id)\
+        .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
+        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+    years = [int(y[0]) for y in years if y[0]]
     
     if request.method == 'POST':
         try:
@@ -124,6 +144,10 @@ def edit(id):
             user.email = request.form['email']
             user.role = request.form['role']
             user.active = request.form.get('active') == 'on'
+            # Update default report year if present
+            if 'default_report_year' in request.form:
+                val = request.form.get('default_report_year')
+                user.default_report_year = int(val) if val else None
             
             db.session.commit()
             
@@ -134,7 +158,7 @@ def edit(id):
             flash(f'Error updating user: {str(e)}', 'danger')
             db.session.rollback()
     
-    return render_template('user_form.html', user=user)
+    return render_template('user_form.html', user=user, years=years)
 
 
 @users_bp.route('/<int:id>/delete', methods=['POST'])
@@ -275,8 +299,33 @@ def change_password(id):
     return render_template('change_password.html', user=user)
 
 
-@users_bp.route('/profile')
+@users_bp.route('/profile', methods=['GET','POST'])
 @login_required
 def profile():
-    """View current user's profile"""
-    return render_template('user_profile.html', user=current_user)
+    """View and edit current user's profile"""
+    from models import JournalEntry, Project
+
+    # Compute available years with Posted entries for this user's organization
+    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+        .join(Project, JournalEntry.project_id == Project.id)\
+        .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
+        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+    years = [int(y[0]) for y in years if y[0]]
+
+    if current_user.id != current_user.id:
+        # placeholder for future profile editing permissions
+        pass
+
+    if request.method == 'POST':
+        try:
+            # Allow user to set or clear default_report_year
+            val = request.form.get('default_report_year')
+            current_user.default_report_year = int(val) if val else None
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('users.profile'))
+        except Exception as e:
+            flash(f'Error updating profile: {str(e)}', 'danger')
+            db.session.rollback()
+
+    return render_template('user_profile.html', user=current_user, years=years)

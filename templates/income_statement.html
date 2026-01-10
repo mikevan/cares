@@ -12,11 +12,26 @@
 
 <div class="card">
     <div class="card-body">
+        {% if request.args.get('banner') == '1' %}
+        <div class="alert alert-warning text-center">
+            <strong>Debug:</strong>
+            Period: <code>{{ data.period }}</code> —
+            Revenues: <code>{{ data.revenues.accounts | length }}</code>,
+            Expenses: <code>{{ data.expenses.accounts | length }}</code>
+        </div>
+        {% endif %}
+
         <h4 class="text-center">{{ data.organization }}</h4>
         <h5 class="text-center text-muted">Statement of Activities</h5>
         <p class="text-center">{{ data.period }}</p>
         
         <hr>
+
+        {% if (not data.revenues.accounts) and (not data.expenses.accounts) %}
+        <div class="alert alert-secondary text-center">
+            No revenue or expense activity for this period. Try a different year or ensure transactions are posted for your organization.
+        </div>
+        {% endif %}
         
         <h5>REVENUE</h5>
         <table class="table">

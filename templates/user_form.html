@@ -59,6 +59,19 @@
                             </option>
                         </select>
                     </div>
+
+                    <div class="mb-3">
+                        <label for="default_report_year" class="form-label">Default Report Year</label>
+                        <select class="form-select" id="default_report_year" name="default_report_year">
+                            <option value="">Auto (most recent)</option>
+                            {% if years %}
+                                {% for y in years %}
+                                <option value="{{ y }}" {{ 'selected' if user and user.default_report_year == y else '' }}>{{ y }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        <small class="text-muted d-block">If set, this year will be used for income/cash/functional reports when not specified.</small>
+                    </div>
                     
                     {% if user %}
                     <div class="mb-3">

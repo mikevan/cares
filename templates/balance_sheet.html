@@ -12,11 +12,27 @@
 
 <div class="card">
     <div class="card-body">
+        {% if request.args.get('banner') == '1' %}
+        <div class="alert alert-warning text-center">
+            <strong>Debug:</strong>
+            As of <code>{{ as_of_date }}</code> —
+            Assets: <code>{{ data.assets.accounts | length }}</code>,
+            Liabilities: <code>{{ data.liabilities.accounts | length }}</code>,
+            Net Assets: <code>{{ data.net_assets.accounts | length }}</code>
+        </div>
+        {% endif %}
+
         <h4 class="text-center">{{ data.organization }}</h4>
         <h5 class="text-center text-muted">Statement of Financial Position</h5>
         <p class="text-center">As of {{ data.as_of_date }}</p>
         
         <hr>
+
+        {% if (not data.assets.accounts) and (not data.liabilities.accounts) and (not data.net_assets.accounts) %}
+        <div class="alert alert-secondary text-center">
+            No accounts have non-zero balances for this date. Try a different date or check that transactions are posted for your organization.
+        </div>
+        {% endif %}
         
         <h5>ASSETS</h5>
         <table class="table">

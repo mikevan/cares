@@ -54,7 +54,7 @@
         {% endif %}
         
         <h5>REVENUE</h5>
-        <table class="table">
+        <table class="table table-striped">
             {% for account in data.revenues.accounts %}
             <tr>
                 <td>{{ account.name }}</td>
@@ -68,7 +68,7 @@
         </table>
         
         <h5 class="mt-4">EXPENSES</h5>
-        <table class="table">
+        <table class="table table-striped">
             {% for account in data.expenses.accounts %}
             <tr>
                 <td>{{ account.name }}</td>

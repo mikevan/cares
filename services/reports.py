@@ -327,7 +327,7 @@ class FinancialReports:
         }
     
     def cash_flow_statement(self, start_date, end_date):
-        """Generate Statement of Cash Flows (simplified)"""
+        """Generate Statement of Cash Flows showing actual cash transactions (direct method)"""
         if isinstance(start_date, str):
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         if isinstance(end_date, str):
@@ -340,6 +340,8 @@ class FinancialReports:
             ChartOfAccounts.account_number.between('1010', '1030'),
             ChartOfAccounts.active == True
         ).all()
+        
+        cash_account_ids = [acc.id for acc in cash_accounts]
         
         # Beginning cash balance
         beginning_cash = sum(
@@ -356,21 +358,78 @@ class FinancialReports:
         # Net change in cash
         net_change = ending_cash - beginning_cash
         
-        # Get income statement to derive operating cash flow
-        income_stmt = self.income_statement(start_date, end_date)
-        operating_cash = income_stmt['net_income']
+        # Get all journal entries for the period
+        entries = JournalEntry.query            .join(Project)            .filter(
+                Project.organization_id == self.org_id,
+                JournalEntry.status == 'Posted',
+                JournalEntry.entry_date.between(start_date, end_date)
+            ).all()
+        
+        # Group cash receipts and payments by project and account
+        # Look for transactions that affect cash accounts
+        cash_receipts = {}  # {project_name: {account_name: amount}}
+        cash_payments = {}  # {project_name: {account_name: amount}}
+        
+        for entry in entries:
+            project_name = entry.project.name
+            
+            # Check if this entry affects a cash account
+            has_cash = any(line.account_id in cash_account_ids for line in entry.lines)
+            
+            if not has_cash:
+                continue  # Skip entries that don't affect cash
+            
+            # Process each line in the entry
+            for line in entry.lines:
+                # Skip the cash account itself - we want to see what the other side is
+                if line.account_id in cash_account_ids:
+                    continue
+                
+                account = line.account
+                account_name = f"{account.account_number} - {account.account_name}"
+                
+                # Cash receipts: revenue accounts (4xxx) that are credited when cash is debited
+                if line.credit_amount > 0 and account.account_number.startswith('4'):
+                    if project_name not in cash_receipts:
+                        cash_receipts[project_name] = {}
+                    if account_name not in cash_receipts[project_name]:
+                        cash_receipts[project_name][account_name] = Decimal('0')
+                    cash_receipts[project_name][account_name] += line.credit_amount
+                
+                # Cash payments: expense accounts (5xxx) that are debited when cash is credited
+                elif line.debit_amount > 0 and account.account_number.startswith('5'):
+                    if project_name not in cash_payments:
+                        cash_payments[project_name] = {}
+                    if account_name not in cash_payments[project_name]:
+                        cash_payments[project_name][account_name] = Decimal('0')
+                    cash_payments[project_name][account_name] += line.debit_amount
+        
+        # Calculate totals
+        total_receipts = sum(
+            sum(accounts.values()) for accounts in cash_receipts.values()
+        )
+        
+        total_payments = sum(
+            sum(accounts.values()) for accounts in cash_payments.values()
+        )
+        
+        operating_activities = float(total_receipts - total_payments)
         
         return {
             'organization': org.name if org else current_app.config.get('DEFAULT_ORGANIZATION', current_app.config.get('APP_NAME', 'CARES - Community Accounting & Resource Engagement System')),
             'period': f'{start_date.strftime("%B %d, %Y")} to {end_date.strftime("%B %d, %Y")}',
-            'operating_activities': float(operating_cash),
+            'cash_receipts': {proj: {acct: float(amt) for acct, amt in accounts.items()} for proj, accounts in cash_receipts.items()},
+            'cash_payments': {proj: {acct: float(amt) for acct, amt in accounts.items()} for proj, accounts in cash_payments.items()},
+            'total_receipts': float(total_receipts),
+            'total_payments': float(total_payments),
+            'operating_activities': operating_activities,
             'investing_activities': 0.0,
             'financing_activities': 0.0,
             'net_change_in_cash': float(net_change),
             'beginning_cash': float(beginning_cash),
             'ending_cash': float(ending_cash)
         }
-    
+
     def functional_expenses(self, start_date, end_date):
         """Generate Statement of Functional Expenses (FASB ASC 958)
         

@@ -794,7 +794,13 @@ Edit `/static/css/branding.css`:
 
 ## 📄 License
 
-MIT License - Free for commercial and nonprofit use
+ASF 2.0 (Apache Software Foundation License 2.0) - 
+
+This project is licensed under the Apache License 2.0. It is a permissive license that allows for:
+Commercial & Non-profit use: You can use, modify, and distribute the software for any purpose.
+Patent Rights: Contributors provide an express grant of patent rights to users.
+Modifications: You can distribute modified versions under different terms.
+For more details, see the LICENSE file.
 
 Copyright (c) 2026 CARES - Community Accounting & Resource Engagement System
 

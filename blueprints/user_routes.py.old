@@ -44,21 +44,11 @@ def new():
     """Create new user"""
     # Compute available years for selection
     from models import JournalEntry, Project
-    
-    # Use extract for PostgreSQL/MySQL, strftime for SQLite
-    dialect = db.engine.dialect.name
-    if dialect == 'postgresql' or dialect == 'mysql':
-        years_q = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
-            .join(Project, JournalEntry.project_id == Project.id)\
-            .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
-            .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
-        years = [int(int(y[0])) for y in years_q if y[0]]
-    else:
-        years_q = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
-            .join(Project, JournalEntry.project_id == Project.id)\
-            .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
-            .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
-        years = [int(y[0]) for y in years_q if y[0]]
+    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+        .join(Project, JournalEntry.project_id == Project.id)\
+        .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
+        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+    years = [int(y[0]) for y in years if y[0]]
 
     if request.method == 'POST':
         try:
@@ -127,21 +117,11 @@ def edit(id):
 
     # Compute available years
     from models import JournalEntry, Project
-    
-    # Use extract for PostgreSQL/MySQL, strftime for SQLite
-    dialect = db.engine.dialect.name
-    if dialect == 'postgresql' or dialect == 'mysql':
-        years_q = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
-            .join(Project, JournalEntry.project_id == Project.id)\
-            .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
-            .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
-        years = [int(int(y[0])) for y in years_q if y[0]]
-    else:
-        years_q = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
-            .join(Project, JournalEntry.project_id == Project.id)\
-            .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
-            .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
-        years = [int(y[0]) for y in years_q if y[0]]
+    years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+        .join(Project, JournalEntry.project_id == Project.id)\
+        .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
+        .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+    years = [int(y[0]) for y in years if y[0]]
     
     if request.method == 'POST':
         try:
@@ -325,21 +305,24 @@ def profile():
     """View and edit current user's profile"""
     from models import JournalEntry, Project
 
-    # Compute available years with Posted entries for this user's organization
-    # Use extract for PostgreSQL/MySQL, strftime for SQLite
     dialect = db.engine.dialect.name
     if dialect == 'postgresql' or dialect == 'mysql':
-        years_q = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
+        years = db.session.query(func.extract('year', JournalEntry.entry_date).label('year'))\
             .join(Project, JournalEntry.project_id == Project.id)\
             .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
             .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
-        years = [int(int(y[0])) for y in years_q if y[0]]
     else:
-        years_q = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+        years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
             .join(Project, JournalEntry.project_id == Project.id)\
             .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
             .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
-        years = [int(y[0]) for y in years_q if y[0]]
+
+    # Compute available years with Posted entries for this user's organization
+    #years = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
+    #    .join(Project, JournalEntry.project_id == Project.id)\
+    #    .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')\
+    #    .distinct().order_by(func.strftime('%Y', JournalEntry.entry_date).desc()).all()
+    years = [int(y[0]) for y in years if y[0]]
 
     if current_user.id != current_user.id:
         # placeholder for future profile editing permissions

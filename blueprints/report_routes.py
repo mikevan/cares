@@ -6,7 +6,7 @@ Handles all financial report routes
 from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required, current_user
 from models import db, Project, JournalEntry, ChartOfAccounts
-from reports import FinancialReports
+from services.reports import FinancialReports
 from datetime import date
 from sqlalchemy import func
 
@@ -52,15 +52,16 @@ def balance_sheet():
     """Display balance sheet report"""
     as_of_date = request.args.get('date', date.today().strftime('%Y-%m-%d'))
     reports = FinancialReports(db.session, current_user.organization_id)
-    data = reports.balance_sheet(as_of_date)
+    # CHANGED: Use detailed balance sheet for IRS compliance
+    data = reports.balance_sheet_detailed(as_of_date)
 
     # Debugging support: if ?debug=1 or ?format=json is present return JSON and log details
     if request.args.get('debug') == '1' or request.args.get('format') == 'json':
-        current_app.logger.info(f"Balance sheet debug for org={current_user.organization_id} date={as_of_date} -> assets={len(data.get('assets', {}).get('accounts', []))}, liabilities={len(data.get('liabilities', {}).get('accounts', []))}, net_assets={len(data.get('net_assets', {}).get('accounts', []))}")
+        current_app.logger.info(f"Balance sheet debug for org={current_user.organization_id} date={as_of_date}")
         return jsonify(data)
 
     # Log counts to help diagnose blank UI reports
-    current_app.logger.debug(f"Balance sheet for org={current_user.organization_id} date={as_of_date} -> assets={len(data.get('assets', {}).get('accounts', []))}, liabilities={len(data.get('liabilities', {}).get('accounts', []))}, net_assets={len(data.get('net_assets', {}).get('accounts', []))}")
+    current_app.logger.debug(f"Balance sheet for org={current_user.organization_id} date={as_of_date}")
 
     return render_template('balance_sheet.html', data=data, as_of_date=as_of_date)
 

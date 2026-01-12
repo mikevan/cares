@@ -7,7 +7,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_required, current_user
 from models import db, User, Member, Project, JournalEntry
-from reports import FinancialReports
+from services.reports import FinancialReports
 from datetime import date
 from blueprints.auth_routes import auth_bp, init_database
 from blueprints.member_routes import members_bp

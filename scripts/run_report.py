@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import traceback
 try:
     from app import app
-    from reports import FinancialReports
+    from services.reports import FinancialReports
     from models import db
     import json
 

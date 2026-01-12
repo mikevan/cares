@@ -7,6 +7,7 @@ from flask import current_app
 from sqlalchemy import func, and_
 from datetime import datetime, date, timedelta
 from decimal import Decimal
+from collections import defaultdict
 
 
 class FinancialReports:
@@ -71,7 +72,7 @@ class FinancialReports:
         return result
     
     def balance_sheet(self, as_of_date=None):
-        """Generate Statement of Financial Position (Balance Sheet)"""
+        """Generate Statement of Financial Position (Balance Sheet) - Simple version for backward compatibility"""
         if as_of_date is None:
             as_of_date = date.today()
         elif isinstance(as_of_date, str):
@@ -108,6 +109,108 @@ class FinancialReports:
             },
             'net_assets': {
                 'accounts': net_assets,
+                'total': total_net_assets
+            },
+            'total_liabilities_and_net_assets': total_liabilities + total_net_assets
+        }
+    
+    def balance_sheet_detailed(self, as_of_date=None):
+        """Generate detailed Statement of Financial Position (Balance Sheet) for IRS compliance"""
+        if as_of_date is None:
+            as_of_date = date.today()
+        elif isinstance(as_of_date, str):
+            as_of_date = datetime.strptime(as_of_date, '%Y-%m-%d').date()
+        
+        org = Organization.query.get(self.org_id)
+        
+        # Get all accounts by type
+        asset_accounts = ChartOfAccounts.query.filter_by(
+            account_type='Asset',
+            active=True
+        ).order_by(ChartOfAccounts.account_number).all()
+        
+        liability_accounts = ChartOfAccounts.query.filter_by(
+            account_type='Liability',
+            active=True
+        ).order_by(ChartOfAccounts.account_number).all()
+        
+        net_asset_accounts = ChartOfAccounts.query.filter_by(
+            account_type='Net Asset',
+            active=True
+        ).order_by(ChartOfAccounts.account_number).all()
+        
+        # Group assets by subtype
+        assets_grouped = defaultdict(list)
+        for account in asset_accounts:
+            balance = self.get_account_balance(account.account_number, as_of_date)
+            if balance != 0:
+                subtype = account.account_subtype or 'Other Assets'
+                assets_grouped[subtype].append({
+                    'number': account.account_number,
+                    'name': account.account_name,
+                    'balance': float(balance)
+                })
+        
+        # Calculate asset subtotals
+        asset_subtotals = {subtype: sum(acc['balance'] for acc in accts) 
+                          for subtype, accts in assets_grouped.items()}
+        total_assets = sum(asset_subtotals.values())
+        
+        # Group liabilities by subtype
+        liabilities_grouped = defaultdict(list)
+        for account in liability_accounts:
+            balance = self.get_account_balance(account.account_number, as_of_date)
+            if balance != 0:
+                subtype = account.account_subtype or 'Other Liabilities'
+                liabilities_grouped[subtype].append({
+                    'number': account.account_number,
+                    'name': account.account_name,
+                    'balance': float(balance)
+                })
+        
+        # Calculate liability subtotals
+        liability_subtotals = {subtype: sum(acc['balance'] for acc in accts) 
+                              for subtype, accts in liabilities_grouped.items()}
+        total_liabilities = sum(liability_subtotals.values())
+        
+        # Group net assets by subtype
+        net_assets_grouped = defaultdict(list)
+        for account in net_asset_accounts:
+            balance = self.get_account_balance(account.account_number, as_of_date)
+            if balance != 0:
+                subtype = account.account_subtype or 'Unrestricted Net Assets'
+                net_assets_grouped[subtype].append({
+                    'number': account.account_number,
+                    'name': account.account_name,
+                    'balance': float(balance)
+                })
+        
+        # Calculate net asset subtotals
+        net_asset_subtotals = {subtype: sum(acc['balance'] for acc in accts) 
+                              for subtype, accts in net_assets_grouped.items()}
+        total_net_assets = sum(net_asset_subtotals.values())
+        
+        # If no net assets recorded, calculate as difference
+        if total_net_assets == 0:
+            total_net_assets = total_assets - total_liabilities
+        
+        return {
+            'organization': org.name if org else current_app.config.get('DEFAULT_ORGANIZATION', 
+                                                                       current_app.config.get('APP_NAME', 'CARES')),
+            'as_of_date': as_of_date.strftime('%B %d, %Y'),
+            'assets': {
+                'groups': dict(assets_grouped),
+                'subtotals': asset_subtotals,
+                'total': total_assets
+            },
+            'liabilities': {
+                'groups': dict(liabilities_grouped),
+                'subtotals': liability_subtotals,
+                'total': total_liabilities
+            },
+            'net_assets': {
+                'groups': dict(net_assets_grouped),
+                'subtotals': net_asset_subtotals,
                 'total': total_net_assets
             },
             'total_liabilities_and_net_assets': total_liabilities + total_net_assets
@@ -370,4 +473,3 @@ class FinancialReports:
                 'total': total_expenses
             }
         }
-

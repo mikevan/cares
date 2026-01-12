@@ -13,35 +13,85 @@
     </div>
 </div>
 
-<div class="row">
-    {% for project in projects %}
-    <div class="col-md-6 col-lg-4 mb-3">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">{{ project.name }}</h5>
-            </div>
-            <div class="card-body">
-                <p class="card-text">{{ project.description or 'No description' }}</p>
-                <p class="mb-1"><strong>Budget:</strong> ${{ "%.2f"|format(project.budget or 0) }}</p>
-                <p class="mb-1"><strong>Status:</strong> 
-                    {% if project.status == 'Active' %}
-                    <span class="badge bg-success">Active</span>
-                    {% elif project.status == 'Completed' %}
-                    <span class="badge bg-secondary">Completed</span>
-                    {% else %}
-                    <span class="badge bg-warning">{{ project.status }}</span>
-                    {% endif %}
-                </p>
-                <p class="mb-1"><strong>Volunteers:</strong> {{ project.volunteers|length }}</p>
-                <p class="mb-3"><strong>Leaders:</strong> {{ project.leaders|length }}</p>
-                <a href="/projects/{{ project.id }}/edit" class="btn btn-sm btn-outline-primary">Edit</a>
-            </div>
+<div class="card">
+    <div class="card-body p-0">
+        {% if projects_data %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th style="width: 100px;">Status</th>
+                        <th style="width: 120px;" class="text-end">Original Budget</th>
+                        <th style="width: 120px;" class="text-end">Spend to Date</th>
+                        <th style="width: 120px;" class="text-end">Remaining</th>
+                        <th style="width: 100px;" class="text-end">Budget Used</th>
+                        <th style="width: 80px;">Volunteers</th>
+                        <th style="width: 80px;">Leaders</th>
+                        <th style="width: 140px;" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in projects_data %}
+                    {% set project = data.project %}
+                    <tr>
+                        <td>
+                            <strong>{{ project.name }}</strong>
+                            {% if project.description %}
+                            <br><small class="text-muted">{{ project.description[:60] }}{{ '...' if project.description|length > 60 else '' }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if project.status == 'Active' %}
+                            <span class="badge bg-success">Active</span>
+                            {% elif project.status == 'Completed' %}
+                            <span class="badge bg-secondary">Completed</span>
+                            {% else %}
+                            <span class="badge bg-warning">{{ project.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">${{ "%.2f"|format(project.budget or 0) }}</td>
+                        <td class="text-end">${{ "%.2f"|format(data.spend) }}</td>
+                        <td class="text-end">
+                            <strong class="{% if data.remaining < 0 %}text-danger{% else %}text-success{% endif %}">
+                                ${{ "%.2f"|format(data.remaining) }}
+                            </strong>
+                        </td>
+                        <td class="text-end">
+                            <span class="{% if data.percent_used > 100 %}text-danger{% elif data.percent_used > 90 %}text-warning{% else %}text-success{% endif %}">
+                                {{ "%.0f"|format(data.percent_used) }}%
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary">{{ project.volunteers|length }}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-primary">{{ project.leaders|length }}</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="/projects/{{ project.id }}/view" class="btn btn-outline-secondary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/projects/{{ project.id }}/edit" class="btn btn-outline-primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-folder" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-3">No projects found.</p>
+            <a href="/projects/new" class="btn btn-primary">
+                <i class="bi bi-folder-plus"></i> Create your first project
+            </a>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="col-12">
-        <p class="text-muted">No projects found. <a href="/projects/new">Create your first project</a>.</p>
-    </div>
-    {% endfor %}
 </div>
 {% endblock %}

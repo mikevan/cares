@@ -1,10 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}{{ 'Edit' if project else 'New' }} Project{% endblock %}
+{% block title %}{{ 'View' if view_mode else 'Edit' if project else 'New' }} Project{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">{{ 'Edit' if project else 'New' }} Project</h1>
+    <h1 class="h2">{{ 'View' if view_mode else 'Edit' if project else 'New' }} Project</h1>
+    {% if view_mode %}
+    <a href="/projects/{{ project.id }}/edit" class="btn btn-primary">
+        <i class="bi bi-pencil"></i> Edit Project
+    </a>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -13,11 +18,11 @@
             <div class="row">
                 <div class="col-md-8 mb-3">
                     <label for="name" class="form-label">Project Name *</label>
-                    <input type="text" class="form-control" id="name" name="name" value="{{ project.name if project else '' }}" required>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ project.name if project else '' }}" required {{ 'disabled' if view_mode else '' }}>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="status" class="form-label">Status</label>
-                    <select class="form-select" id="status" name="status">
+                    <select class="form-select" id="status" name="status" {{ 'disabled' if view_mode else '' }}>
                         <option value="Active" {{ 'selected' if project and project.status == 'Active' else '' }}>Active</option>
                         <option value="Completed" {{ 'selected' if project and project.status == 'Completed' else '' }}>Completed</option>
                         <option value="On Hold" {{ 'selected' if project and project.status == 'On Hold' else '' }}>On Hold</option>
@@ -26,22 +31,23 @@
             </div>
             <div class="mb-3">
                 <label for="description" class="form-label">Description</label>
-                <textarea class="form-control" id="description" name="description" rows="3">{{ project.description if project else '' }}</textarea>
+                <textarea class="form-control" id="description" name="description" rows="3" {{ 'disabled' if view_mode else '' }}>{{ project.description if project else '' }}</textarea>
             </div>
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label for="budget" class="form-label">Budget ($)</label>
-                    <input type="number" step="0.01" class="form-control" id="budget" name="budget" value="{{ project.budget if project else '0.00' }}">
+                    <input type="number" step="0.01" class="form-control" id="budget" name="budget" value="{{ project.budget if project else '0.00' }}" {{ 'disabled' if view_mode else '' }}>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="start_date" class="form-label">Start Date</label>
-                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ project.start_date.strftime('%Y-%m-%d') if project and project.start_date else '' }}">
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ project.start_date.strftime('%Y-%m-%d') if project and project.start_date else '' }}" {{ 'disabled' if view_mode else '' }}>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="end_date" class="form-label">End Date</label>
-                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ project.end_date.strftime('%Y-%m-%d') if project and project.end_date else '' }}">
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ project.end_date.strftime('%Y-%m-%d') if project and project.end_date else '' }}" {{ 'disabled' if view_mode else '' }}>
                 </div>
             </div>
+            {% if not view_mode %}
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Project Leaders</label>
@@ -62,11 +68,162 @@
                     <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
                 </div>
             </div>
+            {% else %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Project Leaders</label>
+                    <div class="form-control" style="height: auto; background-color: #f8f9fa;">
+                        {% if project.leaders %}
+                            {% for leader in project.leaders %}
+                                <span class="badge bg-primary me-1">{{ leader.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">No leaders assigned</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Volunteers</label>
+                    <div class="form-control" style="height: auto; background-color: #f8f9fa;">
+                        {% if project.volunteers %}
+                            {% for volunteer in project.volunteers %}
+                                <span class="badge bg-secondary me-1">{{ volunteer.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">No volunteers assigned</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                 <a href="/projects" class="btn btn-secondary">Cancel</a>
+                {% if not view_mode %}
                 <button type="submit" class="btn btn-primary">Save Project</button>
+                {% endif %}
             </div>
         </form>
     </div>
 </div>
+
+{% if project %}
+<!-- Budget Tracking Section -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5><i class="bi bi-pie-chart"></i> Budget Tracking</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="text-muted small">Original Budget</div>
+                <div class="h4">${{ "%.2f"|format(project.budget or 0) }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Spent to Date</div>
+                <div class="h4">${{ "%.2f"|format(spend_to_date) }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Remaining</div>
+                <div class="h4 {% if remaining < 0 %}text-danger{% else %}text-success{% endif %}">
+                    ${{ "%.2f"|format(remaining) }}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Budget Used</div>
+                <div class="h4 {% if percent_used > 100 %}text-danger{% elif percent_used > 90 %}text-warning{% else %}text-success{% endif %}">
+                    {{ "%.1f"|format(percent_used) }}%
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="mt-3">
+            <div class="progress" style="height: 25px;">
+                <div class="progress-bar {% if percent_used > 100 %}bg-danger{% elif percent_used > 90 %}bg-warning{% else %}bg-success{% endif %}" 
+                     role="progressbar" 
+                     style="width: {{ [percent_used, 100]|min }}%;" 
+                     aria-valuenow="{{ percent_used }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                    {{ "%.1f"|format(percent_used) }}%
+                </div>
+            </div>
+        </div>
+        
+        {% if remaining < 0 %}
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-triangle-fill"></i> 
+            <strong>Over Budget!</strong> This project has exceeded its budget by ${{ "%.2f"|format(-remaining) }}.
+        </div>
+        {% elif percent_used > 90 %}
+        <div class="alert alert-warning mt-3 mb-0">
+            <i class="bi bi-exclamation-circle"></i> 
+            <strong>Budget Alert:</strong> This project has used {{ "%.1f"|format(percent_used) }}% of its budget.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Transactions Section -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Project Transactions</h5>
+        <span class="badge bg-primary">{{ transactions|length }} Total</span>
+    </div>
+    <div class="card-body p-0">
+        {% if transactions %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">Date</th>
+                        <th>Description</th>
+                        <th style="width: 120px;">Reference</th>
+                        <th style="width: 150px;" class="text-end">Amount</th>
+                        <th style="width: 80px;" class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>{{ transaction.entry_date.strftime('%m/%d/%Y') }}</td>
+                        <td>{{ transaction.description }}</td>
+                        <td>{{ transaction.reference_number or '—' }}</td>
+                        <td class="text-end">
+                            {% set total = namespace(value=0) %}
+                            {% for line in transaction.lines %}
+                                {% set total.value = total.value + (line.debit_amount or 0) %}
+                            {% endfor %}
+                            <strong>${{ "%.2f"|format(total.value) }}</strong>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('transactions.view', id=transaction.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-secondary">
+                        <td colspan="3" class="text-end"><strong>Total Expenses:</strong></td>
+                        <td class="text-end"><strong class="{% if spend_to_date > project.budget %}text-danger{% else %}text-success{% endif %}">${{ "%.2f"|format(spend_to_date) }}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+            <p class="mt-2">No transactions recorded for this project yet.</p>
+            <a href="{{ url_for('transactions.new') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> Add Transaction
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

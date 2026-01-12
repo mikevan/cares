@@ -7,9 +7,10 @@ import csv
 import io
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
 from flask_login import login_required, current_user
-from models import db, Project, Member
+from models import db, Project, Member, JournalEntry, JournalEntryLine, ChartOfAccounts
 from datetime import datetime
 from decimal import Decimal
+from sqlalchemy import func
 
 # Create the blueprint
 projects_bp = Blueprint('projects', __name__, url_prefix='/projects')
@@ -20,11 +21,80 @@ projects_bp = Blueprint('projects', __name__, url_prefix='/projects')
 @projects_bp.route('/')
 @login_required
 def list():
-    """List all projects"""
+    """List all projects with budget tracking"""
     projects = Project.query.filter_by(
         organization_id=current_user.organization_id
     ).order_by(Project.name).all()
-    return render_template('projects.html', projects=projects)
+    
+    # Calculate budget data for each project
+    projects_data = []
+    for project in projects:
+        spend = calculate_project_spend(project.id)
+        budget = project.budget or Decimal('0')
+        remaining = budget - spend
+        percent_used = (float(spend) / float(budget) * 100) if budget > 0 else 0
+        
+        projects_data.append({
+            'project': project,
+            'spend': spend,
+            'remaining': remaining,
+            'percent_used': percent_used
+        })
+    
+    return render_template('projects.html', projects_data=projects_data)
+
+
+def calculate_project_spend(project_id):
+    """Calculate total spend for a project (sum of expense account debits)"""
+    # Get all expense transactions for this project (accounts starting with 5)
+    spend = db.session.query(func.sum(JournalEntryLine.debit_amount))\
+        .join(JournalEntry)\
+        .join(ChartOfAccounts, JournalEntryLine.account_id == ChartOfAccounts.id)\
+        .filter(
+            JournalEntry.project_id == project_id,
+            JournalEntry.status == 'Posted',
+            ChartOfAccounts.account_number.like('5%')
+        ).scalar() or Decimal('0')
+    
+    # Subtract any credits (reversals) on expense accounts
+    credits = db.session.query(func.sum(JournalEntryLine.credit_amount))\
+        .join(JournalEntry)\
+        .join(ChartOfAccounts, JournalEntryLine.account_id == ChartOfAccounts.id)\
+        .filter(
+            JournalEntry.project_id == project_id,
+            JournalEntry.status == 'Posted',
+            ChartOfAccounts.account_number.like('5%')
+        ).scalar() or Decimal('0')
+    
+    return spend - credits
+
+
+@projects_bp.route('/<int:id>/view')
+@login_required
+def view(id):
+    """View project details with transactions"""
+    project = Project.query.get_or_404(id)
+    
+    # Get all transactions for this project
+    transactions = JournalEntry.query.filter_by(
+        project_id=id,
+        status='Posted'
+    ).order_by(JournalEntry.entry_date.desc()).all()
+    
+    # Calculate spend to date
+    spend_to_date = calculate_project_spend(id)
+    budget = project.budget or Decimal('0')
+    remaining = budget - spend_to_date
+    percent_used = (float(spend_to_date) / float(budget) * 100) if budget > 0 else 0
+    
+    return render_template('project_form.html', 
+                          project=project, 
+                          members=None,
+                          transactions=transactions,
+                          spend_to_date=spend_to_date,
+                          remaining=remaining,
+                          percent_used=percent_used,
+                          view_mode=True)
 
 
 @projects_bp.route('/new', methods=['GET', 'POST'])
@@ -120,7 +190,27 @@ def edit(id):
         organization_id=current_user.organization_id,
         active=True
     ).order_by(Member.name).all()
-    return render_template('project_form.html', project=project, members=members)
+    
+    # Get all transactions for this project
+    transactions = JournalEntry.query.filter_by(
+        project_id=id,
+        status='Posted'
+    ).order_by(JournalEntry.entry_date.desc()).all()
+    
+    # Calculate spend to date
+    spend_to_date = calculate_project_spend(id)
+    budget = project.budget or Decimal('0')
+    remaining = budget - spend_to_date
+    percent_used = (float(spend_to_date) / float(budget) * 100) if budget > 0 else 0
+    
+    return render_template('project_form.html', 
+                          project=project, 
+                          members=members,
+                          transactions=transactions,
+                          spend_to_date=spend_to_date,
+                          remaining=remaining,
+                          percent_used=percent_used,
+                          view_mode=False)
 
 
 @projects_bp.route('/export')

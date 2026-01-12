@@ -32,18 +32,33 @@ def admin_or_treasurer_required(f):
 @transactions_bp.route('/')
 @login_required
 def list():
-    """List all transactions with pagination"""
+    """List all transactions with pagination and filtering"""
     page = request.args.get('page', 1, type=int)
     per_page = 50
+    project_filter = request.args.get('project', '', type=str)
     
+    # Base query
     transactions_query = JournalEntry.query\
         .join(Project)\
-        .filter(Project.organization_id == current_user.organization_id)\
-        .order_by(JournalEntry.entry_date.desc())
+        .filter(Project.organization_id == current_user.organization_id)
     
+    # Apply project filter if specified
+    if project_filter:
+        transactions_query = transactions_query.filter(Project.id == int(project_filter))
+    
+    # Order and paginate
+    transactions_query = transactions_query.order_by(JournalEntry.entry_date.desc())
     transactions = transactions_query.paginate(page=page, per_page=per_page, error_out=False)
     
-    return render_template('transactions.html', transactions=transactions)
+    # Get all projects for filter dropdown
+    projects = Project.query.filter_by(
+        organization_id=current_user.organization_id
+    ).order_by(Project.name).all()
+    
+    return render_template('transactions.html', 
+                          transactions=transactions, 
+                          projects=projects,
+                          selected_project=project_filter)
 
 
 @transactions_bp.route('/<int:id>')

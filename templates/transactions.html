@@ -15,27 +15,62 @@
     </div>
 </div>
 
-<div class="card">
+<!-- Filter Section -->
+<div class="card mb-3">
     <div class="card-body">
+        <form method="GET" action="/transactions" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="project" class="form-label">Filter by Project</label>
+                <select class="form-select" id="project" name="project" onchange="this.form.submit()">
+                    <option value="">All Projects</option>
+                    {% for project in projects %}
+                    <option value="{{ project.id }}" {{ 'selected' if selected_project == project.id|string else '' }}>
+                        {{ project.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                {% if selected_project %}
+                <a href="/transactions" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear Filter
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
         {% if transactions.items %}
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
+            <table class="table table-striped table-hover table-sortable mb-0">
                 <thead>
                     <tr>
-                        <th>Date</th>
+                        <th style="width: 110px;">Date</th>
                         <th>Description</th>
-                        <th>Project</th>
-                        <th>Reference</th>
-                        <th>Status</th>
+                        <th style="width: 150px;">Project</th>
+                        <th style="width: 120px;">Reference</th>
+                        <th style="width: 130px;" class="text-end">Amount</th>
+                        <th style="width: 100px;" class="no-sort">Status</th>
+                        <th style="width: 80px;" class="no-sort text-end">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for transaction in transactions.items %}
-                    <tr style="cursor: pointer;" onclick="window.location='/transactions/{{ transaction.id }}';">
-                        <td>{{ transaction.entry_date.strftime('%Y-%m-%d') }}</td>
+                    <tr>
+                        <td>{{ transaction.entry_date.strftime('%m/%d/%Y') }}</td>
                         <td>{{ transaction.description }}</td>
                         <td><span class="badge bg-secondary">{{ transaction.project.name }}</span></td>
-                        <td>{{ transaction.reference_number or '-' }}</td>
+                        <td>{{ transaction.reference_number or '—' }}</td>
+                        <td class="text-end">
+                            {% set total = namespace(value=0) %}
+                            {% for line in transaction.lines %}
+                                {% set total.value = total.value + (line.debit_amount or 0) %}
+                            {% endfor %}
+                            ${{ "%.2f"|format(total.value) }}
+                        </td>
                         <td>
                             {% if transaction.status == 'Posted' %}
                             <span class="badge bg-success">Posted</span>
@@ -45,6 +80,11 @@
                             <span class="badge bg-danger">Voided</span>
                             {% endif %}
                         </td>
+                        <td class="text-end">
+                            <a href="/transactions/{{ transaction.id }}" class="btn btn-sm btn-outline-primary">
+                                View
+                            </a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -53,28 +93,44 @@
         
         <!-- Pagination -->
         {% if transactions.has_prev or transactions.has_next %}
-        <nav>
-            <ul class="pagination">
-                <li class="page-item {{ 'disabled' if not transactions.has_prev }}">
-                    <a class="page-link" href="?page={{ transactions.prev_num }}">Previous</a>
-                </li>
-                {% for page_num in transactions.iter_pages() %}
-                    {% if page_num %}
-                        <li class="page-item {{ 'active' if page_num == transactions.page }}">
-                            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                    {% endif %}
-                {% endfor %}
-                <li class="page-item {{ 'disabled' if not transactions.has_next }}">
-                    <a class="page-link" href="?page={{ transactions.next_num }}">Next</a>
-                </li>
-            </ul>
-        </nav>
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination mb-0">
+                    <li class="page-item {{ 'disabled' if not transactions.has_prev }}">
+                        <a class="page-link" href="?page={{ transactions.prev_num }}{% if selected_project %}&project={{ selected_project }}{% endif %}">Previous</a>
+                    </li>
+                    {% for page_num in transactions.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {{ 'active' if page_num == transactions.page }}">
+                                <a class="page-link" href="?page={{ page_num }}{% if selected_project %}&project={{ selected_project }}{% endif %}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {{ 'disabled' if not transactions.has_next }}">
+                        <a class="page-link" href="?page={{ transactions.next_num }}{% if selected_project %}&project={{ selected_project }}{% endif %}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
         {% endif %}
         {% else %}
-        <p class="text-muted">No transactions found.</p>
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-3">
+                {% if selected_project %}
+                No transactions found for this project.
+                {% else %}
+                No transactions found.
+                {% endif %}
+            </p>
+            {% if current_user.role in ['Admin', 'Treasurer'] %}
+            <a href="/transactions/new" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Transaction
+            </a>
+            {% endif %}
+        </div>
         {% endif %}
     </div>
 </div>

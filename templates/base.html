@@ -207,8 +207,131 @@
     {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <style>
+        /* Sortable Table Styles */
+        .table-sortable thead th {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 25px;
+        }
+        
+        .table-sortable thead th:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .table-sortable thead th::after {
+            content: '\2195'; /* Up/Down arrows */
+            position: absolute;
+            right: 8px;
+            opacity: 0.3;
+            font-size: 0.8em;
+        }
+        
+        .table-sortable thead th.sort-asc::after {
+            content: '\2191'; /* Up arrow */
+            opacity: 1;
+            color: #0d6efd;
+        }
+        
+        .table-sortable thead th.sort-desc::after {
+            content: '\2193'; /* Down arrow */
+            opacity: 1;
+            color: #0d6efd;
+        }
+        
+        .table-sortable thead th.no-sort {
+            cursor: default;
+            padding-right: inherit;
+        }
+        
+        .table-sortable thead th.no-sort::after {
+            content: none;
+        }
+    </style>
+    
+    <script>
+        // Table Sorting Functionality
+        function initSortableTables() {
+            document.querySelectorAll('.table-sortable').forEach(table => {
+                const headers = table.querySelectorAll('thead th');
+                const tbody = table.querySelector('tbody');
+                
+                headers.forEach((header, index) => {
+                    // Skip if header has 'no-sort' class
+                    if (header.classList.contains('no-sort')) {
+                        return;
+                    }
+                    
+                    header.addEventListener('click', () => {
+                        const currentSort = header.classList.contains('sort-asc') ? 'asc' : 
+                                          header.classList.contains('sort-desc') ? 'desc' : 'none';
+                        
+                        // Remove sort classes from all headers
+                        headers.forEach(h => {
+                            h.classList.remove('sort-asc', 'sort-desc');
+                        });
+                        
+                        // Determine new sort direction
+                        let newSort = 'asc';
+                        if (currentSort === 'asc') {
+                            newSort = 'desc';
+                        }
+                        
+                        // Add appropriate class
+                        header.classList.add(`sort-${newSort}`);
+                        
+                        // Sort the table
+                        sortTable(tbody, index, newSort);
+                    });
+                });
+            });
+        }
+        
+        function sortTable(tbody, columnIndex, direction) {
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                const aCell = a.querySelectorAll('td')[columnIndex];
+                const bCell = b.querySelectorAll('td')[columnIndex];
+                
+                if (!aCell || !bCell) return 0;
+                
+                let aValue = aCell.textContent.trim();
+                let bValue = bCell.textContent.trim();
+                
+                // Try to parse as number (handles currency)
+                const aNum = parseFloat(aValue.replace(/[$,]/g, ''));
+                const bNum = parseFloat(bValue.replace(/[$,]/g, ''));
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    // Numeric comparison
+                    return direction === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+                
+                // Try to parse as date (MM/DD/YYYY or YYYY-MM-DD)
+                const aDate = new Date(aValue);
+                const bDate = new Date(bValue);
+                
+                if (!isNaN(aDate) && !isNaN(bDate) && aValue.match(/\d{1,4}[-\/]\d{1,2}[-\/]\d{1,4}/)) {
+                    return direction === 'asc' ? aDate - bDate : bDate - aDate;
+                }
+                
+                // String comparison (case insensitive)
+                const comparison = aValue.toLowerCase().localeCompare(bValue.toLowerCase());
+                return direction === 'asc' ? comparison : -comparison;
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize sortable tables
+            initSortableTables();
             // Sidebar toggle for mobile
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.getElementById('sidebar');

@@ -10,12 +10,32 @@
     </div>
 </div>
 
+<!-- Year Filter -->
+{% if available_years %}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" action="/reports/income-statement" class="row align-items-center">
+            <div class="col-auto">
+                <label for="year" class="mb-0">Report Year:</label>
+            </div>
+            <div class="col-auto">
+                <select class="form-select" id="year" name="year" onchange="this.form.submit()" style="min-width: 100px; max-width: 150px;">
+                    {% for yr in available_years %}
+                    <option value="{{ yr }}" {% if yr == year %}selected{% endif %}>{{ yr }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-body">
         {% if request.args.get('banner') == '1' %}
         <div class="alert alert-warning text-center">
             <strong>Debug:</strong>
-            Period: <code>{{ data.period }}</code> —
+            Period: <code>{{ data.period }}</code> â€”
             Revenues: <code>{{ data.revenues.accounts | length }}</code>,
             Expenses: <code>{{ data.expenses.accounts | length }}</code>
         </div>

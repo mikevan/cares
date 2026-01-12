@@ -27,7 +27,7 @@ def _get_available_years(org_id):
                 .join(Project, JournalEntry.project_id == Project.id)\
                 .filter(Project.organization_id == org_id, JournalEntry.status == 'Posted')\
                 .distinct().order_by(func.extract('year', JournalEntry.entry_date).desc()).all()
-            years = [int(int(y[0])) for y in years_q if y[0]]
+            years = [int(y[0]) for y in years_q if y[0]]
         else:
             years_q = db.session.query(func.strftime('%Y', JournalEntry.entry_date).label('year'))\
                 .join(Project, JournalEntry.project_id == Project.id)\
@@ -36,12 +36,15 @@ def _get_available_years(org_id):
             years = [int(y[0]) for y in years_q if y[0]]
     except Exception:
         years = []
+    
+    # Remove any duplicates and sort descending (avoid using list() due to name shadowing)
+    years = sorted([y for y in set(years)], reverse=True)
     return years
 
 
 @reports_bp.route('/')
 @login_required
-def list():
+def index():
     """Display reports menu"""
     return render_template('reports.html')
 
@@ -50,20 +53,38 @@ def list():
 @login_required
 def balance_sheet():
     """Display balance sheet report"""
-    as_of_date = request.args.get('date', date.today().strftime('%Y-%m-%d'))
+    year_param = request.args.get('year', None, type=int)
+    
+    # Get available years
+    available_years = _get_available_years(current_user.organization_id)
+    
+    # Determine year to use
+    if year_param is None:
+        if current_user.default_report_year and int(current_user.default_report_year) in available_years:
+            year = int(current_user.default_report_year)
+        else:
+            latest_year = db.session.query(func.max(func.extract('year', JournalEntry.entry_date)))                .join(Project, JournalEntry.project_id == Project.id)                .filter(Project.organization_id == current_user.organization_id, JournalEntry.status == 'Posted')                .scalar()
+            try:
+                year = int(latest_year) if latest_year else date.today().year
+            except Exception:
+                year = date.today().year
+    else:
+        year = year_param
+    
+    # Balance sheet is as of December 31 of the selected year
+    as_of_date = f'{year}-12-31'
+    
     reports = FinancialReports(db.session, current_user.organization_id)
-    # CHANGED: Use detailed balance sheet for IRS compliance
     data = reports.balance_sheet_detailed(as_of_date)
 
-    # Debugging support: if ?debug=1 or ?format=json is present return JSON and log details
+    # Debugging support
     if request.args.get('debug') == '1' or request.args.get('format') == 'json':
         current_app.logger.info(f"Balance sheet debug for org={current_user.organization_id} date={as_of_date}")
         return jsonify(data)
 
-    # Log counts to help diagnose blank UI reports
     current_app.logger.debug(f"Balance sheet for org={current_user.organization_id} date={as_of_date}")
 
-    return render_template('balance_sheet.html', data=data, as_of_date=as_of_date)
+    return render_template('balance_sheet.html', data=data, year=year, available_years=available_years)
 
 
 @reports_bp.route('/income-statement')

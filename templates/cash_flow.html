@@ -10,6 +10,26 @@
     </div>
 </div>
 
+<!-- Year Filter -->
+{% if available_years %}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" action="/reports/cash-flow" class="row align-items-center">
+            <div class="col-auto">
+                <label for="year" class="mb-0">Report Year:</label>
+            </div>
+            <div class="col-auto">
+                <select class="form-select" id="year" name="year" onchange="this.form.submit()" style="min-width: 100px; max-width: 150px;">
+                    {% for yr in available_years %}
+                    <option value="{{ yr }}" {% if yr == year %}selected{% endif %}>{{ yr }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-body">
         <h4 class="text-center">{{ data.organization }}</h4>

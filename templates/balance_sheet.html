@@ -10,11 +10,31 @@
     </div>
 </div>
 
+<!-- Year Filter -->
+{% if available_years %}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" action="/reports/balance-sheet" class="row align-items-center">
+            <div class="col-auto">
+                <label for="year" class="mb-0">Report Year:</label>
+            </div>
+            <div class="col-auto">
+                <select class="form-select" id="year" name="year" onchange="this.form.submit()" style="min-width: 100px; max-width: 150px;">
+                    {% for yr in available_years %}
+                    <option value="{{ yr }}" {% if yr == year %}selected{% endif %}>{{ yr }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-body">
         <h4 class="text-center">{{ data.organization }}</h4>
         <h5 class="text-center text-muted">Statement of Financial Position</h5>
-        <p class="text-center">As of {{ data.as_of_date }}</p>
+        <p class="text-center">As of December 31, {{ year }}</p>
         
         <hr>
 

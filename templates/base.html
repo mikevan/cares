@@ -133,11 +133,32 @@
                     </div>
                 </div>
 
-                <!-- Reports -->
-                <a href="/reports" class="sidebar-link {% if request.endpoint and 'report' in request.endpoint %}active{% endif %}">
-                    <i class="bi bi-file-earmark-text"></i>
-                    <span>Reports</span>
-                </a>
+                <!-- Reports Section (Collapsible) -->
+                <div class="sidebar-section collapsible-section">
+                    <a href="{{ url_for('reports.index') }}" class="sidebar-section-header {% if request.endpoint == 'reports.index' %}active{% endif %}" style="text-decoration: none; color: inherit;">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span>Reports</span>
+                        <i class="bi bi-chevron-right chevron-icon"></i>
+                    </a>
+                    <div class="sidebar-section-content">
+                        <a href="{{ url_for('reports.balance_sheet') }}" class="sidebar-link {% if request.endpoint == 'reports.balance_sheet' %}active{% endif %}">
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            <span>Balance Sheet</span>
+                        </a>
+                        <a href="{{ url_for('reports.income_statement') }}" class="sidebar-link {% if request.endpoint == 'reports.income_statement' %}active{% endif %}">
+                            <i class="bi bi-file-earmark-ruled"></i>
+                            <span>Income Statement</span>
+                        </a>
+                        <a href="{{ url_for('reports.cash_flow') }}" class="sidebar-link {% if request.endpoint == 'reports.cash_flow' %}active{% endif %}">
+                            <i class="bi bi-cash-stack"></i>
+                            <span>Cash Flow</span>
+                        </a>
+                        <a href="{{ url_for('reports.functional_expenses') }}" class="sidebar-link {% if request.endpoint == 'reports.functional_expenses' %}active{% endif %}">
+                            <i class="bi bi-pie-chart"></i>
+                            <span>Functional Expenses</span>
+                        </a>
+                    </div>
+                </div>
 
                 {% if current_user.role in ['Admin', 'Treasurer'] %}
                 <!-- Chart of Accounts -->

@@ -172,8 +172,12 @@ def cash_flow():
 def functional_expenses():
     """Display functional expenses report"""
     year_param = request.args.get('year', None, type=int)
+    
+    # Compute available years early so we can validate a saved default
+    available_years = _get_available_years(current_user.organization_id)
+    
     if year_param is None:
-        if current_user.default_report_year:
+        if current_user.default_report_year and int(current_user.default_report_year) in available_years:
             year = int(current_user.default_report_year)
         else:
             # FIXED: Changed from strftime to extract for PostgreSQL compatibility
@@ -187,9 +191,6 @@ def functional_expenses():
 
     start_date = f'{year}-01-01'
     end_date = f'{year}-12-31'
-    
-    # Available years for UI dropdown
-    available_years = _get_available_years(current_user.organization_id)
 
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.functional_expenses(start_date, end_date)

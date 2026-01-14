@@ -13,6 +13,7 @@ from app import app, db
 from models import Organization, User, Project, Member, JournalEntry, JournalEntryLine, ChartOfAccounts
 from datetime import datetime, timedelta
 from decimal import Decimal
+from sqlalchemy import text
 import random
 
 def clear_existing_data():
@@ -20,6 +21,11 @@ def clear_existing_data():
     print("Clearing existing data...")
     JournalEntryLine.query.delete()
     JournalEntry.query.delete()
+    
+    # Delete junction tables first (foreign key constraints)
+    db.session.execute(text("DELETE FROM project_members"))
+    db.session.execute(text("DELETE FROM project_leaders"))
+    
     Member.query.delete()
     Project.query.delete()
     
@@ -34,25 +40,23 @@ def create_members(org_id):
     """Create sample members"""
     print("Creating members...")
     members_data = [
-        {'first_name': 'John', 'last_name': 'Smith', 'email': 'john.smith@example.com', 'phone': '555-0101', 'member_type': 'Regular'},
-        {'first_name': 'Mary', 'last_name': 'Johnson', 'email': 'mary.johnson@example.com', 'phone': '555-0102', 'member_type': 'Regular'},
-        {'first_name': 'Robert', 'last_name': 'Williams', 'email': 'robert.williams@example.com', 'phone': '555-0103', 'member_type': 'Regular'},
-        {'first_name': 'Patricia', 'last_name': 'Brown', 'email': 'patricia.brown@example.com', 'phone': '555-0104', 'member_type': 'Board'},
-        {'first_name': 'Michael', 'last_name': 'Jones', 'email': 'michael.jones@example.com', 'phone': '555-0105', 'member_type': 'Board'},
-        {'first_name': 'Linda', 'last_name': 'Garcia', 'email': 'linda.garcia@example.com', 'phone': '555-0106', 'member_type': 'Regular'},
-        {'first_name': 'David', 'last_name': 'Miller', 'email': 'david.miller@example.com', 'phone': '555-0107', 'member_type': 'Volunteer'},
-        {'first_name': 'Barbara', 'last_name': 'Davis', 'email': 'barbara.davis@example.com', 'phone': '555-0108', 'member_type': 'Volunteer'},
-        {'first_name': 'William', 'last_name': 'Rodriguez', 'email': 'william.rodriguez@example.com', 'phone': '555-0109', 'member_type': 'Regular'},
-        {'first_name': 'Elizabeth', 'last_name': 'Martinez', 'email': 'elizabeth.martinez@example.com', 'phone': '555-0110', 'member_type': 'Board'},
+        {'name': 'John Smith', 'email': 'john.smith@example.com', 'phone': '555-0101'},
+        {'name': 'Mary Johnson', 'email': 'mary.johnson@example.com', 'phone': '555-0102'},
+        {'name': 'Robert Williams', 'email': 'robert.williams@example.com', 'phone': '555-0103'},
+        {'name': 'Patricia Brown', 'email': 'patricia.brown@example.com', 'phone': '555-0104'},
+        {'name': 'Michael Jones', 'email': 'michael.jones@example.com', 'phone': '555-0105'},
+        {'name': 'Linda Garcia', 'email': 'linda.garcia@example.com', 'phone': '555-0106'},
+        {'name': 'David Miller', 'email': 'david.miller@example.com', 'phone': '555-0107'},
+        {'name': 'Barbara Davis', 'email': 'barbara.davis@example.com', 'phone': '555-0108'},
+        {'name': 'William Rodriguez', 'email': 'william.rodriguez@example.com', 'phone': '555-0109'},
+        {'name': 'Elizabeth Martinez', 'email': 'elizabeth.martinez@example.com', 'phone': '555-0110'},
     ]
     
     for member_data in members_data:
         member = Member(
-            first_name=member_data['first_name'],
-            last_name=member_data['last_name'],
+            name=member_data['name'],
             email=member_data['email'],
             phone=member_data['phone'],
-            member_type=member_data['member_type'],
             organization_id=org_id
         )
         db.session.add(member)
@@ -515,7 +519,7 @@ def load_depreciation(projects):
             f"DEP-{date.strftime('%m%y')}",
             [
                 {'account': '5810', 'debit': amount, 'memo': 'Depreciation expense'},
-                {'account': '1510', 'credit': amount, 'memo': 'Accumulated depreciation'}
+                {'account': '1590', 'credit': amount, 'memo': 'Accumulated depreciation'}
             ]
         )
     
@@ -629,13 +633,13 @@ def main():
         print(f"- Journal Entries: {JournalEntry.query.count()}")
         print(f"- Journal Entry Lines: {JournalEntryLine.query.count()}")
         print("\nThe system now demonstrates:")
-        print("✓ Multiple asset types (cash, receivables, equipment, vehicles, investments)")
-        print("✓ Various liabilities (payables, loans, deferred revenue, accrued expenses)")
-        print("✓ Diverse revenue sources (donations, grants, fees, events)")
-        print("✓ Comprehensive expenses across programs and administration")
-        print("✓ Depreciation tracking")
-        print("✓ Loan payments with principal and interest")
-        print("✓ Restricted and unrestricted net assets")
+        print("âœ“ Multiple asset types (cash, receivables, equipment, vehicles, investments)")
+        print("âœ“ Various liabilities (payables, loans, deferred revenue, accrued expenses)")
+        print("âœ“ Diverse revenue sources (donations, grants, fees, events)")
+        print("âœ“ Comprehensive expenses across programs and administration")
+        print("âœ“ Depreciation tracking")
+        print("âœ“ Loan payments with principal and interest")
+        print("âœ“ Restricted and unrestricted net assets")
         print("\nYou can now view complete financial statements showing the full capabilities!")
 
 if __name__ == '__main__':

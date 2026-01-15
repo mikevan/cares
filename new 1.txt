@@ -1,0 +1,2931 @@
+           )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F05248A960; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 78982), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0522A5F10>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (64, admin, admin@test.com, null, Admin, 64, t, 2026-01-14 22:47:22.078982, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 64>
+
+    @pytest.fixture(scope='function')
+    def admin_client(client, organization):
+        """
+        Create test client with admin user session.
+
+        Args:
+            client: Test HTTP client
+            organization: Organization fixture
+
+        Returns:
+            FlaskClient: Authenticated admin test client
+        """
+>       admin_user = UserFactory(
+            username='admin',
+            email='admin@test.com',
+            role='Admin',
+            organization=organization
+        )
+
+tests\conftest.py:334:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F05248A960; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 78982), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0522A5F10>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (64, admin, admin@test.com, null, Admin, 64, t, 2026-01-14 22:47:22.078982, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'admin', 'email': 'admin@test.com', 'password_hash': None, 'role': 'Admin', 'organization_id': 64, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 78982), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+____________________________________________________________________________________________ ERROR at setup of TestJournalEntryValidation.test_journal_entry_requires_description ____________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F0522F7E60>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052444380>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 396113), 'default_report_year': 2026, 'email': 'admin@test.com', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F052588D60; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 396113), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052444380>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (65, admin, admin@test.com, null, Admin, 65, t, 2026-01-14 22:47:22.396113, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 65>
+
+    @pytest.fixture(scope='function')
+    def admin_client(client, organization):
+        """
+        Create test client with admin user session.
+
+        Args:
+            client: Test HTTP client
+            organization: Organization fixture
+
+        Returns:
+            FlaskClient: Authenticated admin test client
+        """
+>       admin_user = UserFactory(
+            username='admin',
+            email='admin@test.com',
+            role='Admin',
+            organization=organization
+        )
+
+tests\conftest.py:334:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F052588D60; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 396113), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052444380>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (65, admin, admin@test.com, null, Admin, 65, t, 2026-01-14 22:47:22.396113, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'admin', 'email': 'admin@test.com', 'password_hash': None, 'role': 'Admin', 'organization_id': 65, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 396113), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+__________________________________________________________________________________________________ ERROR at setup of TestAccountingLogic.test_debit_increases_asset_account __________________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F05248DA90>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052444290>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 711612), 'default_report_year': 2026, 'email': 'admin@test.com', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0525F92A0; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 711612), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052444290>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (66, admin, admin@test.com, null, Admin, 66, t, 2026-01-14 22:47:22.711612, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 66>
+
+    @pytest.fixture(scope='function')
+    def admin_client(client, organization):
+        """
+        Create test client with admin user session.
+
+        Args:
+            client: Test HTTP client
+            organization: Organization fixture
+
+        Returns:
+            FlaskClient: Authenticated admin test client
+        """
+>       admin_user = UserFactory(
+            username='admin',
+            email='admin@test.com',
+            role='Admin',
+            organization=organization
+        )
+
+tests\conftest.py:334:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0525F92A0; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 711612), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052444290>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (66, admin, admin@test.com, null, Admin, 66, t, 2026-01-14 22:47:22.711612, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'admin', 'email': 'admin@test.com', 'password_hash': None, 'role': 'Admin', 'organization_id': 66, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 22, 711612), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+________________________________________________________________________________________________ ERROR at setup of TestAccountingLogic.test_credit_increases_revenue_account _________________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F05239F860>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F051ED6F00>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 15247), 'default_report_year': 2026, 'email': 'admin@test.com', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0524D4D60; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 15247), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F051ED6F00>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (67, admin, admin@test.com, null, Admin, 67, t, 2026-01-14 22:47:23.015247, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 67>
+
+    @pytest.fixture(scope='function')
+    def admin_client(client, organization):
+        """
+        Create test client with admin user session.
+
+        Args:
+            client: Test HTTP client
+            organization: Organization fixture
+
+        Returns:
+            FlaskClient: Authenticated admin test client
+        """
+>       admin_user = UserFactory(
+            username='admin',
+            email='admin@test.com',
+            role='Admin',
+            organization=organization
+        )
+
+tests\conftest.py:334:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0524D4D60; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 15247), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F051ED6F00>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (67, admin, admin@test.com, null, Admin, 67, t, 2026-01-14 22:47:23.015247, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'admin', 'email': 'admin@test.com', 'password_hash': None, 'role': 'Admin', 'organization_id': 67, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 15247), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+_______________________________________________________________________________________________ ERROR at setup of TestTransactionWorkflow.test_create_edit_delete_transaction ________________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F05235A330>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052213890>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 340434), 'default_report_year': 2026, 'email': 'admin@test.com', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0525A2180; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 340434), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052213890>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (68, admin, admin@test.com, null, Admin, 68, t, 2026-01-14 22:47:23.340434, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 68>
+
+    @pytest.fixture(scope='function')
+    def admin_client(client, organization):
+        """
+        Create test client with admin user session.
+
+        Args:
+            client: Test HTTP client
+            organization: Organization fixture
+
+        Returns:
+            FlaskClient: Authenticated admin test client
+        """
+>       admin_user = UserFactory(
+            username='admin',
+            email='admin@test.com',
+            role='Admin',
+            organization=organization
+        )
+
+tests\conftest.py:334:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0525A2180; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 340434), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052213890>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (68, admin, admin@test.com, null, Admin, 68, t, 2026-01-14 22:47:23.340434, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'admin', 'email': 'admin@test.com', 'password_hash': None, 'role': 'Admin', 'organization_id': 68, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 340434), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+__________________________________________________________________________________________________ ERROR at setup of TestTransactionWorkflow.test_view_transaction_details ___________________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F052202660>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052201C10>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 644910), 'default_report_year': 2026, 'email': 'lauramckee@example.net', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0523AD620; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 644910), 'default_report_year': 2026, 'email': 'lauramckee@example.net', ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052201C10>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (69, testuser107, lauramckee@example.net, null, Member, 69, t, 2026-01-14 22:47:23.64491, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+args = (), kwargs = {'request': <SubRequest 'user' for <Function test_view_transaction_details>>}, k = 'user__username'
+
+    @functools.wraps(fixture_function)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        for k in set(kwargs.keys()) - function_args:
+            del kwargs[k]
+>       return fixture_function(*args, **kwargs)
+
+.venv\Lib\site-packages\pytest_factoryboy\fixturegen.py:88:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\pytest_factoryboy\fixturegen.py:49: in fn
+    return function(*args, **kwargs)
+.venv\Lib\site-packages\pytest_factoryboy\fixture.py:399: in model_fixture
+    instance = NewFactory(**kwargs)
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0523AD620; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 644910), 'default_report_year': 2026, 'email': 'lauramckee@example.net', ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F052201C10>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (69, testuser107, lauramckee@example.net, null, Member, 69, t, 2026-01-14 22:47:23.64491, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'testuser107', 'email': 'lauramckee@example.net', 'password_hash': None, 'role': 'Member', 'organization_id': 69, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 644910), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+______________________________________________________________________________________________________________ ERROR at setup of test_create_many_transactions _______________________________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F0523378F0>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0523A9D90>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 968789), 'default_report_year': 2026, 'email': 'admin@test.com', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0524E60A0; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 968789), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0523A9D90>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (70, admin, admin@test.com, null, Admin, 70, t, 2026-01-14 22:47:23.968789, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 70>
+
+    @pytest.fixture(scope='function')
+    def admin_client(client, organization):
+        """
+        Create test client with admin user session.
+
+        Args:
+            client: Test HTTP client
+            organization: Organization fixture
+
+        Returns:
+            FlaskClient: Authenticated admin test client
+        """
+>       admin_user = UserFactory(
+            username='admin',
+            email='admin@test.com',
+            role='Admin',
+            organization=organization
+        )
+
+tests\conftest.py:334:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0524E60A0; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 968789), 'default_report_year': 2026, 'email': 'admin@test.com', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0523A9D90>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (70, admin, admin@test.com, null, Admin, 70, t, 2026-01-14 22:47:23.968789, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'admin', 'email': 'admin@test.com', 'password_hash': None, 'role': 'Admin', 'organization_id': 70, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 23, 968789), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+__________________________________________________________________________________________ ERROR at setup of TestAuthenticationSystem.test_authenticated_user_can_access_dashboard ___________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F053822C60>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0538220F0>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 24, 365402), 'default_report_year': 2026, 'email': 'jacksonsydney@example.org', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F051FF8820; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 24, 365402), 'default_report_year': 2026, 'email': 'jacksonsydney@example.org', ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0538220F0>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (71, testuser110, jacksonsydney@example.org, null, Member, 71, t, 2026-01-14 22:47:24.365402, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+args = (), kwargs = {'request': <SubRequest 'user' for <Function test_authenticated_user_can_access_dashboard>>}, k = 'user__username'
+
+    @functools.wraps(fixture_function)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        for k in set(kwargs.keys()) - function_args:
+            del kwargs[k]
+>       return fixture_function(*args, **kwargs)
+
+.venv\Lib\site-packages\pytest_factoryboy\fixturegen.py:88:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\pytest_factoryboy\fixturegen.py:49: in fn
+    return function(*args, **kwargs)
+.venv\Lib\site-packages\pytest_factoryboy\fixture.py:399: in model_fixture
+    instance = NewFactory(**kwargs)
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F051FF8820; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 24, 365402), 'default_report_year': 2026, 'email': 'jacksonsydney@example.org', ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0538220F0>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (71, testuser110, jacksonsydney@example.org, null, Member, 71, t, 2026-01-14 22:47:24.365402, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'testuser110', 'email': 'jacksonsydney@example.org', 'password_hash': None, 'role': 'Member', 'organization_id': 71, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 24, 365402), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+================================================================================================================================== FAILURES ==================================================================================================================================
+____________________________________________________________________________________________________ TestReportsDashboard.test_reports_dashboard_requires_authentication _____________________________________________________________________________________________________
+
+self = <test_reports.TestReportsDashboard object at 0x000001F051513080>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_reports_dashboard_requires_authentication(self, client):
+        """Test that reports dashboard requires authentication."""
+        response = client.get('/reports')
+
+>       assert response.status_code == 302
+E       assert 308 == 302
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\functional\test_reports.py:27: AssertionError
+___________________________________________________________________________________________________________ TestReportPermissions.test_treasurer_can_view_reports ____________________________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F0523A9C10>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0524901D0>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 577735), 'default_report_year': 2026, 'email': 'brian72@example.net', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0524E5700; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 577735), 'default_report_year': 2026, 'email': 'brian72@example.net', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0524901D0>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (35, treasurer, brian72@example.net, null, Treasurer, 35, t, 2026-01-14 22:47:12.577735, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+self = <test_reports.TestReportPermissions object at 0x000001F051530740>, client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 35>, db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x000001F0523A8C50>
+
+    def test_treasurer_can_view_reports(self, client, organization, db_session):
+        """Test that treasurer role can view financial reports."""
+        from tests.fixtures.factories import UserFactory
+
+>       treasurer = UserFactory(
+            username='treasurer',
+            role='Treasurer',
+            organization=organization
+        )
+
+tests\functional\test_reports.py:242:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F0524E5700; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 577735), 'default_report_year': 2026, 'email': 'brian72@example.net', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F0524901D0>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (35, treasurer, brian72@example.net, null, Treasurer, 35, t, 2026-01-14 22:47:12.577735, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'treasurer', 'email': 'brian72@example.net', 'password_hash': None, 'role': 'Treasurer', 'organization_id': 35, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 577735), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+___________________________________________________________________________________________________________ TestReportPermissions.test_member_cannot_view_reports ____________________________________________________________________________________________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001F05237C830>, dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F05237C8F0>, statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001F051E97800>
+parameters = [{'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 873665), 'default_report_year': 2026, 'email': 'aharris@example.org', ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+
+        effective_parameters: Optional[_AnyExecuteParams]
+
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+
+        if self._echo:
+            self._log_info(str_statement)
+
+            stats = context._get_cache_stats()
+
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F05248AEA0; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 873665), 'default_report_year': 2026, 'email': 'aharris@example.org', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F05237C8F0>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.NotNullViolation: null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (36, member, aharris@example.org, null, Member, 36, t, 2026-01-14 22:47:12.873665, null, 2026).
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: NotNullViolation
+
+The above exception was the direct cause of the following exception:
+
+self = <test_reports.TestReportPermissions object at 0x000001F051530CE0>, client = <FlaskClient <Flask 'conftest'>>, organization = <Organization 36>, db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x000001F05237FA10>
+
+    def test_member_cannot_view_reports(self, client, organization, db_session):
+        """Test that regular member role cannot view financial reports."""
+        from tests.fixtures.factories import UserFactory
+
+>       member = UserFactory(
+            username='member',
+            role='Member',
+            organization=organization
+        )
+
+tests\functional\test_reports.py:264:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\factory\base.py:43: in __call__
+    return cls.create(**kwargs)
+.venv\Lib\site-packages\factory\base.py:539: in create
+    return cls._generate(enums.CREATE_STRATEGY, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:60: in _generate
+    return super()._generate(strategy, params)
+.venv\Lib\site-packages\factory\base.py:468: in _generate
+    return step.build()
+.venv\Lib\site-packages\factory\builder.py:274: in build
+    instance = self.factory_meta.instantiate(
+.venv\Lib\site-packages\factory\base.py:320: in instantiate
+    return self.factory._create(model, *args, **kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:116: in _create
+    return cls._save(model_class, session, args, kwargs)
+.venv\Lib\site-packages\factory\alchemy.py:127: in _save
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\scoping.py:597: in commit
+    return self._proxied.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001F05191E6F0>, cursor = <cursor object at 0x000001F05248AEA0; closed: -1>
+statement = 'INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_rep...%(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id'
+parameters = {'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 873665), 'default_report_year': 2026, 'email': 'aharris@example.org', ...}, context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001F05237C8F0>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+E       DETAIL:  Failing row contains (36, member, aharris@example.org, null, Member, 36, t, 2026-01-14 22:47:12.873665, null, 2026).
+E
+E       [SQL: INSERT INTO users (username, email, password_hash, role, organization_id, active, created_at, last_login, default_report_year) VALUES (%(username)s, %(email)s, %(password_hash)s, %(role)s, %(organization_id)s, %(active)s, %(created_at)s, %(last_login)s, %(default_report_year)s) RETURNING users.id]
+E       [parameters: {'username': 'member', 'email': 'aharris@example.org', 'password_hash': None, 'role': 'Member', 'organization_id': 36, 'active': True, 'created_at': datetime.datetime(2026, 1, 14, 22, 47, 12, 873665), 'last_login': None, 'default_report_year': 2026}]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+_________________________________________________________________________________________________________ TestMemberRoutes.test_members_list_requires_authentication _________________________________________________________________________________________________________
+
+self = <test_member_routes.TestMemberRoutes object at 0x000001F0515324B0>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_members_list_requires_authentication(self, client):
+        """Test that members list page requires authentication."""
+        response = client.get('/members')
+
+        # Should redirect to login
+>       assert response.status_code == 302
+E       assert 308 == 302
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\integration\test_member_routes.py:24: AssertionError
+________________________________________________________________________________________________________ TestProjectRoutes.test_projects_list_requires_authentication ________________________________________________________________________________________________________
+
+self = <test_project_routes.TestProjectRoutes object at 0x000001F051546FF0>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_projects_list_requires_authentication(self, client):
+        """Test that projects list requires authentication."""
+        response = client.get('/projects')
+
+>       assert response.status_code == 302
+E       assert 308 == 302
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\integration\test_project_routes.py:25: AssertionError
+____________________________________________________________________________________________________ TestTransactionRoutes.test_transactions_list_requires_authentication ____________________________________________________________________________________________________
+
+self = <test_transaction_routes.TestTransactionRoutes object at 0x000001F05156A0C0>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_transactions_list_requires_authentication(self, client):
+        """Test that transactions list requires authentication."""
+        response = client.get('/transactions')
+
+>       assert response.status_code == 302
+E       assert 308 == 302
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\integration\test_transaction_routes.py:28: AssertionError
+______________________________________________________________________________________________________ TestAccountingLogic.test_chart_of_accounts_has_required_accounts ______________________________________________________________________________________________________
+
+self = <test_transaction_routes.TestAccountingLogic object at 0x000001F051570170>, db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x000001F052210C20>
+
+    def test_chart_of_accounts_has_required_accounts(self, db_session):
+        """Test that all required FASB ASC 958 accounts exist."""
+        required_accounts = {
+            '1000': 'Asset',      # Cash
+            '2000': 'Liability',  # Accounts Payable
+            '3000': 'Net Assets', # Unrestricted Net Assets
+            '4000': 'Revenue',    # Contributions
+            '5000': 'Expense',    # Program Expenses
+        }
+
+        for account_number, account_type in required_accounts.items():
+            account = ChartOfAccounts.query.filter_by(
+                account_number=account_number
+            ).first()
+
+>           assert account is not None, f"Account {account_number} not found"
+E           AssertionError: Account 1000 not found
+E           assert None is not None
+
+tests\integration\test_transaction_routes.py:195: AssertionError
+______________________________________________________________________________________________________________ TestRouteAvailability.test_members_route_exists _______________________________________________________________________________________________________________
+
+self = <test_health_checks.TestRouteAvailability object at 0x000001F051573410>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_members_route_exists(self, client):
+        """Test that members route exists (even if redirects to login)."""
+        response = client.get('/members')
+
+        # Either shows page or redirects to login
+>       assert response.status_code in [200, 302]
+E       assert 308 in [200, 302]
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\smoke\test_health_checks.py:74: AssertionError
+____________________________________________________________________________________________________________ TestRouteAvailability.test_transactions_route_exists ____________________________________________________________________________________________________________
+
+self = <test_health_checks.TestRouteAvailability object at 0x000001F051573740>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_transactions_route_exists(self, client):
+        """Test that transactions route exists."""
+        response = client.get('/transactions')
+
+>       assert response.status_code in [200, 302]
+E       assert 308 in [200, 302]
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\smoke\test_health_checks.py:80: AssertionError
+______________________________________________________________________________________________________________ TestRouteAvailability.test_projects_route_exists ______________________________________________________________________________________________________________
+
+self = <test_health_checks.TestRouteAvailability object at 0x000001F051573A70>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_projects_route_exists(self, client):
+        """Test that projects route exists."""
+        response = client.get('/projects')
+
+>       assert response.status_code in [200, 302]
+E       assert 308 in [200, 302]
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\smoke\test_health_checks.py:86: AssertionError
+______________________________________________________________________________________________________________ TestRouteAvailability.test_reports_route_exists _______________________________________________________________________________________________________________
+
+self = <test_health_checks.TestRouteAvailability object at 0x000001F051573DA0>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_reports_route_exists(self, client):
+        """Test that reports route exists."""
+        response = client.get('/reports')
+
+>       assert response.status_code in [200, 302]
+E       assert 308 in [200, 302]
+E        +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\smoke\test_health_checks.py:92: AssertionError
+_______________________________________________________________________________________________________ TestAuthenticationSystem.test_unauthenticated_access_redirects _______________________________________________________________________________________________________
+
+self = <test_health_checks.TestAuthenticationSystem object at 0x000001F0515901A0>, client = <FlaskClient <Flask 'conftest'>>
+
+    def test_unauthenticated_access_redirects(self, client):
+        """Test that unauthenticated access to protected routes redirects."""
+        protected_routes = [
+            '/members',
+            '/transactions',
+            '/projects',
+            '/reports',
+        ]
+
+        for route in protected_routes:
+            response = client.get(route)
+            # Should redirect to login
+>           assert response.status_code == 302
+E           assert 308 == 302
+E            +  where 308 = <WrapperTestResponse streamed [308 PERMANENT REDIRECT]>.status_code
+
+tests\smoke\test_health_checks.py:111: AssertionError
+___________________________________________________________________________________________________ TestJournalEntryModel.test_is_balanced_returns_true_for_balanced_entry ___________________________________________________________________________________________________
+
+self = <test_models.TestJournalEntryModel object at 0x000001F0515BFEF0>
+
+    def test_is_balanced_returns_true_for_balanced_entry(self):
+        """Test that is_balanced returns True for balanced entries."""
+        # Create mock journal entry
+        entry = JournalEntry()
+
+        # Create mock lines (balanced: 100 debit, 100 credit)
+        line1 = Mock(debit_amount=Decimal('100.00'), credit_amount=Decimal('0.00'))
+        line2 = Mock(debit_amount=Decimal('0.00'), credit_amount=Decimal('100.00'))
+
+        # Mock the lines relationship
+>       entry.lines = [line1, line2]
+
+tests\unit\test_models.py:92:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:540: in __set__
+    self.impl.set(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:343: in set
+    self.fire_append_event(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:260: in fire_append_event
+    value = fn(state, value, initiator or self._append_token)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+state = <sqlalchemy.orm.state.InstanceState object at 0x000001F05382C3B0>, child = <Mock id='2131705391408'>, initiator = <sqlalchemy.orm.attributes.AttributeEventToken object at 0x000001F052253FC0>, kw = {}
+child_state = <Mock name='mock._sa_instance_state' id='2131684309184'>, child_dict = {'_mock_call_args': None, '_mock_call_args_list': [], '_mock_call_count': 0, '_mock_called': False, ...}
+
+    def emit_backref_from_collection_append_event(
+        state, child, initiator, **kw
+    ):
+        if child is None:
+            return
+
+        child_state, child_dict = instance_state(child), instance_dict(child)
+>       child_impl = child_state.manager[key].impl
+E       TypeError: 'Mock' object is not subscriptable
+
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:2210: TypeError
+_________________________________________________________________________________________________ TestJournalEntryModel.test_is_balanced_returns_false_for_unbalanced_entry __________________________________________________________________________________________________
+
+self = <test_models.TestJournalEntryModel object at 0x000001F0515E4260>
+
+    def test_is_balanced_returns_false_for_unbalanced_entry(self):
+        """Test that is_balanced returns False for unbalanced entries."""
+        entry = JournalEntry()
+
+        # Create unbalanced lines (100 debit, 50 credit)
+        line1 = Mock(debit_amount=Decimal('100.00'), credit_amount=Decimal('0.00'))
+        line2 = Mock(debit_amount=Decimal('0.00'), credit_amount=Decimal('50.00'))
+
+>       entry.lines = [line1, line2]
+
+tests\unit\test_models.py:104:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:540: in __set__
+    self.impl.set(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:343: in set
+    self.fire_append_event(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:260: in fire_append_event
+    value = fn(state, value, initiator or self._append_token)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+state = <sqlalchemy.orm.state.InstanceState object at 0x000001F05382DD90>, child = <Mock id='2131704727648'>, initiator = <sqlalchemy.orm.attributes.AttributeEventToken object at 0x000001F052253FC0>, kw = {}
+child_state = <Mock name='mock._sa_instance_state' id='2131704739168'>, child_dict = {'_mock_call_args': None, '_mock_call_args_list': [], '_mock_call_count': 0, '_mock_called': False, ...}
+
+    def emit_backref_from_collection_append_event(
+        state, child, initiator, **kw
+    ):
+        if child is None:
+            return
+
+        child_state, child_dict = instance_state(child), instance_dict(child)
+>       child_impl = child_state.manager[key].impl
+E       TypeError: 'Mock' object is not subscriptable
+
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:2210: TypeError
+_______________________________________________________________________________________________________ TestJournalEntryModel.test_is_balanced_handles_rounding_errors _______________________________________________________________________________________________________
+
+self = <test_models.TestJournalEntryModel object at 0x000001F0515E4590>
+
+    def test_is_balanced_handles_rounding_errors(self):
+        """Test that is_balanced handles small rounding differences."""
+        entry = JournalEntry()
+
+        # Create lines with tiny rounding difference (< $0.01)
+        line1 = Mock(debit_amount=Decimal('100.00'), credit_amount=Decimal('0.00'))
+        line2 = Mock(debit_amount=Decimal('0.00'), credit_amount=Decimal('100.005'))
+
+>       entry.lines = [line1, line2]
+
+tests\unit\test_models.py:116:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:540: in __set__
+    self.impl.set(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:343: in set
+    self.fire_append_event(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:260: in fire_append_event
+    value = fn(state, value, initiator or self._append_token)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+state = <sqlalchemy.orm.state.InstanceState object at 0x000001F0522DBA70>, child = <Mock id='2131681617552'>, initiator = <sqlalchemy.orm.attributes.AttributeEventToken object at 0x000001F052253FC0>, kw = {}
+child_state = <Mock name='mock._sa_instance_state' id='2131681617888'>, child_dict = {'_mock_call_args': None, '_mock_call_args_list': [], '_mock_call_count': 0, '_mock_called': False, ...}
+
+    def emit_backref_from_collection_append_event(
+        state, child, initiator, **kw
+    ):
+        if child is None:
+            return
+
+        child_state, child_dict = instance_state(child), instance_dict(child)
+>       child_impl = child_state.manager[key].impl
+E       TypeError: 'Mock' object is not subscriptable
+
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:2210: TypeError
+_________________________________________________________________________________________________________ TestJournalEntryModel.test_is_balanced_with_multiple_lines _________________________________________________________________________________________________________
+
+self = <test_models.TestJournalEntryModel object at 0x000001F0515BF290>
+
+    def test_is_balanced_with_multiple_lines(self):
+        """Test is_balanced with multiple debit and credit lines."""
+        entry = JournalEntry()
+
+        # Multiple balanced lines
+        lines = [
+            Mock(debit_amount=Decimal('100.00'), credit_amount=Decimal('0.00')),
+            Mock(debit_amount=Decimal('50.00'), credit_amount=Decimal('0.00')),
+            Mock(debit_amount=Decimal('0.00'), credit_amount=Decimal('75.00')),
+            Mock(debit_amount=Decimal('0.00'), credit_amount=Decimal('75.00')),
+        ]
+
+>       entry.lines = lines
+
+tests\unit\test_models.py:133:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:540: in __set__
+    self.impl.set(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:343: in set
+    self.fire_append_event(
+.venv\Lib\site-packages\sqlalchemy\orm\writeonly.py:260: in fire_append_event
+    value = fn(state, value, initiator or self._append_token)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+state = <sqlalchemy.orm.state.InstanceState object at 0x000001F052216450>, child = <Mock id='2131682885600'>, initiator = <sqlalchemy.orm.attributes.AttributeEventToken object at 0x000001F052253FC0>, kw = {}
+child_state = <Mock name='mock._sa_instance_state' id='2131685735504'>, child_dict = {'_mock_call_args': None, '_mock_call_args_list': [], '_mock_call_count': 0, '_mock_called': False, ...}
+
+    def emit_backref_from_collection_append_event(
+        state, child, initiator, **kw
+    ):
+        if child is None:
+            return
+
+        child_state, child_dict = instance_state(child), instance_dict(child)
+>       child_impl = child_state.manager[key].impl
+E       TypeError: 'Mock' object is not subscriptable
+
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:2210: TypeError
+============================================================================================================================== warnings summary ==============================================================================================================================
+tests\functional\test_balance_sheet.py:20
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_balance_sheet.py:20: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_balance_sheet.py:69
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_balance_sheet.py:69: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_balance_sheet.py:105
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_balance_sheet.py:105: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_balance_sheet.py:130
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_balance_sheet.py:130: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_balance_sheet.py:149
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_balance_sheet.py:149: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_balance_sheet.py:179
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_balance_sheet.py:179: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_balance_sheet.py:180
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_balance_sheet.py:180: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.slow
+
+tests\functional\test_reports.py:19
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:19: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:43
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:43: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:89
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:89: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:129
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:129: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:162
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:162: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:182
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:182: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:201
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:201: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:234
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:234: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:284
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:284: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.functional
+
+tests\functional\test_reports.py:285
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\functional\test_reports.py:285: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.slow
+
+tests\integration\test_member_routes.py:15
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_member_routes.py:15: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_member_routes.py:104
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_member_routes.py:104: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_member_routes.py:134
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_member_routes.py:134: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_member_routes.py:155
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_member_routes.py:155: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_member_routes.py:156
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_member_routes.py:156: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.slow
+
+tests\integration\test_project_routes.py:17
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_project_routes.py:17: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_project_routes.py:124
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_project_routes.py:124: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_project_routes.py:173
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_project_routes.py:173: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_project_routes.py:237
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_project_routes.py:237: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_project_routes.py:294
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_project_routes.py:294: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_project_routes.py:324
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_project_routes.py:324: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_project_routes.py:325
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_project_routes.py:325: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.slow
+
+tests\integration\test_transaction_routes.py:20
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_transaction_routes.py:20: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_transaction_routes.py:98
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_transaction_routes.py:98: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_transaction_routes.py:142
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_transaction_routes.py:142: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_transaction_routes.py:199
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_transaction_routes.py:199: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_transaction_routes.py:261
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_transaction_routes.py:261: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_transaction_routes.py:262
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\integration\test_transaction_routes.py:262: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.slow
+
+tests\smoke\test_health_checks.py:15
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\smoke\test_health_checks.py:15: PytestUnknownMarkWarning: Unknown pytest.mark.smoke - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.smoke
+
+tests\smoke\test_health_checks.py:58
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\smoke\test_health_checks.py:58: PytestUnknownMarkWarning: Unknown pytest.mark.smoke - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.smoke
+
+tests\smoke\test_health_checks.py:95
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\smoke\test_health_checks.py:95: PytestUnknownMarkWarning: Unknown pytest.mark.smoke - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.smoke
+
+tests\smoke\test_health_checks.py:133
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\smoke\test_health_checks.py:133: PytestUnknownMarkWarning: Unknown pytest.mark.smoke - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.smoke
+
+tests\smoke\test_health_checks.py:154
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\smoke\test_health_checks.py:154: PytestUnknownMarkWarning: Unknown pytest.mark.smoke - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.smoke
+
+tests\smoke\test_health_checks.py:168
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\smoke\test_health_checks.py:168: PytestUnknownMarkWarning: Unknown pytest.mark.smoke - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.smoke
+
+tests\unit\test_models.py:22
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\unit\test_models.py:22: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\unit\test_models.py:78
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\unit\test_models.py:78: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\unit\test_models.py:143
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\unit\test_models.py:143: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\unit\test_models.py:155
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\unit\test_models.py:155: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\conftest.py:434
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\conftest.py:434: PytestUnknownMarkWarning: Unknown pytest.mark.functional - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.functional)
+
+tests\conftest.py:432
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\conftest.py:432: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.integration)
+
+tests\conftest.py:438
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\conftest.py:438: PytestUnknownMarkWarning: Unknown pytest.mark.smoke - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.smoke)
+
+tests\conftest.py:430
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\conftest.py:430: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.unit)
+
+tests/functional/test_balance_sheet.py: 38 warnings
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\.venv\Lib\site-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/functional/test_balance_sheet.py: 13 warnings
+tests/functional/test_reports.py: 23 warnings
+tests/integration/test_member_routes.py: 8 warnings
+tests/integration/test_project_routes.py: 16 warnings
+tests/integration/test_transaction_routes.py: 9 warnings
+tests/smoke/test_health_checks.py: 2 warnings
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\fixtures\factories.py:76: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at = LazyAttribute(lambda x: datetime.utcnow())
+
+tests/functional/test_balance_sheet.py: 13 warnings
+tests/functional/test_reports.py: 23 warnings
+tests/integration/test_member_routes.py: 8 warnings
+tests/integration/test_project_routes.py: 16 warnings
+tests/integration/test_transaction_routes.py: 9 warnings
+tests/smoke/test_health_checks.py: 2 warnings
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\fixtures\factories.py:77: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at = LazyAttribute(lambda x: datetime.utcnow())
+
+tests/functional/test_balance_sheet.py: 13 warnings
+tests/functional/test_reports.py: 23 warnings
+tests/integration/test_member_routes.py: 8 warnings
+tests/integration/test_project_routes.py: 16 warnings
+tests/integration/test_transaction_routes.py: 9 warnings
+tests/smoke/test_health_checks.py: 1 warning
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\fixtures\factories.py:108: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at = LazyAttribute(lambda x: datetime.utcnow())
+
+tests/functional/test_balance_sheet.py: 13 warnings
+tests/functional/test_reports.py: 23 warnings
+tests/integration/test_member_routes.py: 8 warnings
+tests/integration/test_project_routes.py: 16 warnings
+tests/integration/test_transaction_routes.py: 9 warnings
+tests/smoke/test_health_checks.py: 1 warning
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\fixtures\factories.py:109: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    default_report_year = LazyAttribute(lambda x: datetime.utcnow().year)
+
+tests/functional/test_balance_sheet.py: 13 warnings
+tests/functional/test_reports.py: 23 warnings
+tests/integration/test_member_routes.py: 8 warnings
+tests/integration/test_project_routes.py: 16 warnings
+tests/integration/test_transaction_routes.py: 9 warnings
+tests/smoke/test_health_checks.py: 1 warning
+  C:\workspace\NonProfitAccounting\kofc-accounting-system\tests\conftest.py:246: SAWarning: transaction already deassociated from connection
+    transaction.rollback()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================================================================================================================== short test summary info ===========================================================================================================================
+FAILED tests/functional/test_reports.py::TestReportsDashboard::test_reports_dashboard_requires_authentication - assert 308 == 302
+FAILED tests/functional/test_reports.py::TestReportPermissions::test_treasurer_can_view_reports - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+FAILED tests/functional/test_reports.py::TestReportPermissions::test_member_cannot_view_reports - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+FAILED tests/integration/test_member_routes.py::TestMemberRoutes::test_members_list_requires_authentication - assert 308 == 302
+FAILED tests/integration/test_project_routes.py::TestProjectRoutes::test_projects_list_requires_authentication - assert 308 == 302
+FAILED tests/integration/test_transaction_routes.py::TestTransactionRoutes::test_transactions_list_requires_authentication - assert 308 == 302
+FAILED tests/integration/test_transaction_routes.py::TestAccountingLogic::test_chart_of_accounts_has_required_accounts - AssertionError: Account 1000 not found
+FAILED tests/smoke/test_health_checks.py::TestRouteAvailability::test_members_route_exists - assert 308 in [200, 302]
+FAILED tests/smoke/test_health_checks.py::TestRouteAvailability::test_transactions_route_exists - assert 308 in [200, 302]
+FAILED tests/smoke/test_health_checks.py::TestRouteAvailability::test_projects_route_exists - assert 308 in [200, 302]
+FAILED tests/smoke/test_health_checks.py::TestRouteAvailability::test_reports_route_exists - assert 308 in [200, 302]
+FAILED tests/smoke/test_health_checks.py::TestAuthenticationSystem::test_unauthenticated_access_redirects - assert 308 == 302
+FAILED tests/unit/test_models.py::TestJournalEntryModel::test_is_balanced_returns_true_for_balanced_entry - TypeError: 'Mock' object is not subscriptable
+FAILED tests/unit/test_models.py::TestJournalEntryModel::test_is_balanced_returns_false_for_unbalanced_entry - TypeError: 'Mock' object is not subscriptable
+FAILED tests/unit/test_models.py::TestJournalEntryModel::test_is_balanced_handles_rounding_errors - TypeError: 'Mock' object is not subscriptable
+FAILED tests/unit/test_models.py::TestJournalEntryModel::test_is_balanced_with_multiple_lines - TypeError: 'Mock' object is not subscriptable
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetReport::test_balance_sheet_displays - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetReport::test_balance_sheet_shows_assets - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetReport::test_balance_sheet_shows_liabilities - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetReport::test_balance_sheet_shows_net_assets - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetCalculations::test_balance_sheet_calculates_totals - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetCalculations::test_balance_sheet_balances - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetFilters::test_balance_sheet_with_date_filter - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetFilters::test_balance_sheet_year_filter - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetExport::test_balance_sheet_pdf_export - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetExport::test_balance_sheet_csv_export - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetCompliance::test_balance_sheet_has_required_sections - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::TestBalanceSheetCompliance::test_balance_sheet_separates_restricted_assets - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_balance_sheet.py::test_balance_sheet_with_many_transactions - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestReportsDashboard::test_reports_dashboard_shows_all_reports - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestIncomeStatement::test_income_statement_displays - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestIncomeStatement::test_income_statement_shows_revenue - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestIncomeStatement::test_income_statement_shows_expenses - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestIncomeStatement::test_income_statement_calculates_net_income - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestIncomeStatement::test_income_statement_with_date_range - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestCashFlowStatement::test_cash_flow_displays - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestCashFlowStatement::test_cash_flow_shows_operating_activities - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestCashFlowStatement::test_cash_flow_shows_investing_activities - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestCashFlowStatement::test_cash_flow_shows_financing_activities - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestCashFlowStatement::test_cash_flow_calculates_net_change - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestFunctionalExpenses::test_functional_expenses_displays - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestFunctionalExpenses::test_functional_expenses_shows_program_expenses - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestFunctionalExpenses::test_functional_expenses_shows_supporting_expenses - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestFunctionalExpenses::test_functional_expenses_by_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestReportYearSelection::test_all_reports_support_year_selection - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestReportComparison::test_income_statement_year_comparison - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestReportComparison::test_balance_sheet_period_comparison - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestReportAccuracy::test_reports_use_same_data - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::TestReportAccuracy::test_reports_handle_no_data - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/functional/test_reports.py::test_generate_all_reports_with_data - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::TestMemberRoutes::test_members_list_shows_members - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::TestMemberRoutes::test_create_member_adds_to_database - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::TestMemberRoutes::test_update_member_modifies_database - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::TestMemberRoutes::test_delete_member_removes_from_database - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::TestMemberValidation::test_create_member_requires_name - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::TestMemberValidation::test_create_member_with_duplicate_email_allowed - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::TestMemberSearch::test_search_members_by_name - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_member_routes.py::test_create_many_members - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectRoutes::test_projects_list_shows_projects - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectRoutes::test_create_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectRoutes::test_update_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectRoutes::test_delete_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectBudgets::test_project_budget_validation - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectBudgets::test_project_budget_can_be_zero - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectBudgets::test_project_budget_tracks_spending - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectVolunteers::test_assign_volunteer_to_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectVolunteers::test_remove_volunteer_from_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectVolunteers::test_assign_project_leader - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectStatus::test_create_active_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectStatus::test_complete_project - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectStatus::test_filter_projects_by_status - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectDates::test_project_end_date_after_start_date - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::TestProjectDates::test_project_dates_optional - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_project_routes.py::test_create_many_projects - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestTransactionRoutes::test_transactions_list_shows_entries - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestTransactionRoutes::test_create_simple_transaction - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestJournalEntryValidation::test_journal_entry_must_balance - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestJournalEntryValidation::test_journal_entry_requires_description - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestAccountingLogic::test_debit_increases_asset_account - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestAccountingLogic::test_credit_increases_revenue_account - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestTransactionWorkflow::test_create_edit_delete_transaction - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::TestTransactionWorkflow::test_view_transaction_details - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/integration/test_transaction_routes.py::test_create_many_transactions - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+ERROR tests/smoke/test_health_checks.py::TestAuthenticationSystem::test_authenticated_user_can_access_dashboard - sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "password_hash" of relation "users" violates not-null constraint
+========================================================================================================== 16 failed, 19 passed, 439 warnings, 68 errors in 35.51s ===========================================================================================================
+
+✗ Tests failed with exit code 1
+
+ℹ Test Reports:
+  - HTML Report:    tests/reports/test_report.html
+  - Coverage HTML:  htmlcov/index.html
+  - Coverage XML:   coverage.xml
+Press any key to continue . . .
+(.venv) PS C:\workspace\NonProfitAccounting\kofc-accounting-system>

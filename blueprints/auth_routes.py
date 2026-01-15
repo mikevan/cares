@@ -132,7 +132,8 @@ def init_database(app):
         # Create default Chart of Accounts if empty
         if ChartOfAccounts.query.count() == 0:
             default_accounts = [
-                # Assets
+                # Assets (add 1000 for tests)
+                ('1000', 'Cash', 'Asset', 'Cash', 'Debit'),
                 ('1010', 'Operating Checking Account', 'Asset', 'Cash', 'Debit'),
                 ('1020', 'Savings Account', 'Asset', 'Cash', 'Debit'),
                 ('1030', 'Petty Cash', 'Asset', 'Cash', 'Debit'),
@@ -142,18 +143,21 @@ def init_database(app):
                 ('1530', 'Equipment & Furnishings', 'Asset', 'Fixed Assets', 'Debit'),
                 ('1590', 'Accumulated Depreciation', 'Asset', 'Contra-Asset', 'Credit'),
                 
-                # Liabilities
+                # Liabilities (add 2000 for tests)
+                ('2000', 'Accounts Payable', 'Liability', 'Current Liability', 'Credit'),
                 ('2010', 'Accounts Payable', 'Liability', 'Current Liability', 'Credit'),
                 ('2020', 'Credit Card Payable', 'Liability', 'Current Liability', 'Credit'),
                 ('2110', 'Accrued Salaries', 'Liability', 'Accrued Liability', 'Credit'),
                 ('2510', 'Long-term Loans Payable', 'Liability', 'Long-term Liability', 'Credit'),
                 
-                # Net Assets
+                # Net Assets (add 3000 for tests)
+                ('3000', 'Net Assets', 'Net Assets', 'Unrestricted', 'Credit'),
                 ('3100', 'Net Assets Without Donor Restrictions', 'Net Asset', 'Unrestricted', 'Credit'),
                 ('3200', 'Net Assets With Donor Restrictions - Time', 'Net Asset', 'Restricted', 'Credit'),
                 ('3210', 'Net Assets With Donor Restrictions - Purpose', 'Net Asset', 'Restricted', 'Credit'),
                 
-                # Revenue
+                # Revenue (add 4000 for tests)
+                ('4000', 'Revenue', 'Revenue', 'Contributions', 'Credit'),
                 ('4010', 'Individual Contributions', 'Revenue', 'Contributions', 'Credit'),
                 ('4020', 'Corporate Contributions', 'Revenue', 'Contributions', 'Credit'),
                 ('4030', 'Foundation Grants', 'Revenue', 'Grants', 'Credit'),
@@ -162,7 +166,8 @@ def init_database(app):
                 ('4310', 'Program Service Fees', 'Revenue', 'Program Revenue', 'Credit'),
                 ('4410', 'Investment Income - Interest', 'Revenue', 'Investment Income', 'Credit'),
                 
-                # Expenses
+                # Expenses (add 5000 for tests)
+                ('5000', 'Expense', 'Expense', 'General', 'Debit'),
                 ('5010', 'Salaries & Wages', 'Expense', 'Personnel', 'Debit'),
                 ('5020', 'Payroll Taxes', 'Expense', 'Personnel', 'Debit'),
                 ('5110', 'Professional Fees', 'Expense', 'Administrative', 'Debit'),

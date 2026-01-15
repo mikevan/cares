@@ -19,6 +19,7 @@ from blueprints.report_routes import reports_bp
 from blueprints.settings_routes import settings_bp
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False  # Treat /route and /route/ as equivalent, fixes 308/302 redirect issue
 # Load default application configuration (override with instance/config.py if present)
 app.config.from_object('config.Config')
 app.config.from_pyfile('config.py', silent=True)

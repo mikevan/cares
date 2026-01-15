@@ -596,51 +596,50 @@ def load_restricted_fund_transactions(projects):
 
 def main():
     """Main loader function"""
-    with app.app_context():
-        print("\n=== CARES Comprehensive Data Loader ===\n")
+    print("\n=== CARES Comprehensive Data Loader ===\n")
         
-        # Get or create organization
-        org = Organization.query.first()
-        if not org:
-            print("No organization found. Please run init_db.py first.")
-            return
+    # Get or create organization
+    org = Organization.query.first()
+    if not org:
+        print("No organization found. Please run init_db.py first.")
+        return
         
-        print(f"Loading data for organization: {org.name}\n")
+    print(f"Loading data for organization: {org.name}\n")
         
-        # Clear existing sample data
-        clear_existing_data()
+    # Clear existing sample data
+    clear_existing_data()
         
-        # Create members
-        create_members(org.id)
+    # Create members
+    create_members(org.id)
         
-        # Create projects
-        projects = create_comprehensive_projects(org.id)
+    # Create projects
+    projects = create_comprehensive_projects(org.id)
+    
+    # Load all transaction types
+    load_opening_balances(projects)
+    load_asset_transactions(projects)
+    load_liability_transactions(projects)
+    load_revenue_transactions(projects)
+    load_expense_transactions(projects)
+    load_depreciation(projects)
+    load_loan_payments(projects)
+    load_restricted_fund_transactions(projects)
         
-        # Load all transaction types
-        load_opening_balances(projects)
-        load_asset_transactions(projects)
-        load_liability_transactions(projects)
-        load_revenue_transactions(projects)
-        load_expense_transactions(projects)
-        load_depreciation(projects)
-        load_loan_payments(projects)
-        load_restricted_fund_transactions(projects)
-        
-        print("\n=== Data Load Complete ===")
-        print("\nSummary of loaded data:")
-        print(f"- Members: {Member.query.count()}")
-        print(f"- Projects: {len(projects)}")
-        print(f"- Journal Entries: {JournalEntry.query.count()}")
-        print(f"- Journal Entry Lines: {JournalEntryLine.query.count()}")
-        print("\nThe system now demonstrates:")
-        print("âœ“ Multiple asset types (cash, receivables, equipment, vehicles, investments)")
-        print("âœ“ Various liabilities (payables, loans, deferred revenue, accrued expenses)")
-        print("âœ“ Diverse revenue sources (donations, grants, fees, events)")
-        print("âœ“ Comprehensive expenses across programs and administration")
-        print("âœ“ Depreciation tracking")
-        print("âœ“ Loan payments with principal and interest")
-        print("âœ“ Restricted and unrestricted net assets")
-        print("\nYou can now view complete financial statements showing the full capabilities!")
+    print("\n=== Data Load Complete ===")
+    print("\nSummary of loaded data:")
+    print(f"- Members: {Member.query.count()}")
+    print(f"- Projects: {len(projects)}")
+    print(f"- Journal Entries: {JournalEntry.query.count()}")
+    print(f"- Journal Entry Lines: {JournalEntryLine.query.count()}")
+    print("\nThe system now demonstrates:")
+    print("âœ“ Multiple asset types (cash, receivables, equipment, vehicles, investments)")
+    print("âœ“ Various liabilities (payables, loans, deferred revenue, accrued expenses)")
+    print("âœ“ Diverse revenue sources (donations, grants, fees, events)")
+    print("âœ“ Comprehensive expenses across programs and administration")
+    print("âœ“ Depreciation tracking")
+    print("âœ“ Loan payments with principal and interest")
+    print("âœ“ Restricted and unrestricted net assets")
+    print("\nYou can now view complete financial statements showing the full capabilities!")
 
 if __name__ == '__main__':
     main()

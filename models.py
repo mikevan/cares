@@ -157,9 +157,12 @@ class JournalEntry(db.Model):
                            lazy='dynamic', cascade='all, delete-orphan')
     creator = db.relationship('User', backref='journal_entries')
     
-    def is_balanced(self):
-        total_debits = sum(line.debit_amount for line in self.lines)
-        total_credits = sum(line.credit_amount for line in self.lines)
+    def is_balanced(self, lines=None):
+        """Return True if debits and credits are balanced. Accepts optional lines for testing."""
+        if lines is None:
+            lines = self.lines
+        total_debits = sum(line.debit_amount for line in lines)
+        total_credits = sum(line.credit_amount for line in lines)
         return abs(total_debits - total_credits) < Decimal('0.01')
 
 

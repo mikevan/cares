@@ -187,6 +187,10 @@ def main():
         print("="*60 + "\n")
         
         try:
+            # Create all tables if they don't exist (handles fresh databases)
+            db.create_all()
+            print("✓ Database tables verified/created\n")
+            
             # Step 1: Add missing accounts
             add_missing_accounts()
             

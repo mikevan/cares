@@ -46,6 +46,21 @@
     /* Typography */
     --font-family-primary: 'Arial', 'Helvetica Neue', sans-serif;
     --font-family-heading: 'Georgia', 'Times New Roman', serif;
+
+    /* Bootstrap variable overrides — ensures text-primary, btn-primary etc follow our green */
+    --bs-primary: #1A6B3C;
+    --bs-primary-rgb: 26, 107, 60;
+    --bs-link-color: #1A6B3C;
+    --bs-link-hover-color: #2E8A52;
+}
+
+/* Override Bootstrap text/bg utility classes */
+.text-primary {
+    color: var(--brand-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--brand-primary) !important;
 }
 
 /* ============================================

@@ -21,7 +21,11 @@
                     </button>
                     <div class="ms-3 d-none d-md-block">
                         <div class="brand-header">
-                            <img src="{{ url_for('static', filename='images/cares-logo.svg') }}" alt="CARES" class="brand-logo">
+                            <img src="{{ url_for('static', filename='images/cares-icon.svg') }}" alt="" class="brand-icon">
+                            <div class="brand-text">
+                                <div class="brand-name">CARES</div>
+                                <div class="brand-subtitle">Community Accounting &amp; Resource Engagement System</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -249,13 +253,13 @@
         .table-sortable thead th.sort-asc::after {
             content: '\2191'; /* Up arrow */
             opacity: 1;
-            color: #0d6efd;
+            color: var(--brand-primary);
         }
         
         .table-sortable thead th.sort-desc::after {
             content: '\2193'; /* Down arrow */
             opacity: 1;
-            color: #0d6efd;
+            color: var(--brand-primary);
         }
         
         .table-sortable thead th.no-sort {

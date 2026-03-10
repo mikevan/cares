@@ -309,6 +309,44 @@ def void(id):
     
     return redirect(url_for('transactions.list'))
 
+@transactions_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_or_treasurer_required
+def edit(id):
+    """Edit a transaction"""
+    transaction = JournalEntry.query.get_or_404(id)
+    if request.method == 'POST':
+        try:
+            transaction.description = request.form.get('description', transaction.description)
+            transaction.entry_date = datetime.strptime(request.form['entry_date'], '%Y-%m-%d').date() if request.form.get('entry_date') else transaction.entry_date
+            transaction.project_id = int(request.form['project_id']) if request.form.get('project_id') else transaction.project_id
+            transaction.reference_number = request.form.get('reference_number', transaction.reference_number)
+            db.session.commit()
+            flash('Transaction updated successfully!', 'success')
+            return redirect(url_for('transactions.list'))
+        except Exception as e:
+            flash(f'Error updating transaction: {str(e)}', 'error')
+            db.session.expunge_all()
+
+    projects = Project.query.filter_by(organization_id=current_user.organization_id).all()
+    lines = JournalEntryLine.query.filter_by(journal_entry_id=id).all()
+    return render_template('transaction_form.html', transaction=transaction, projects=projects, lines=lines)
+
+@transactions_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_or_treasurer_required
+def delete(id):
+    """Delete a transaction"""
+    try:
+        transaction = JournalEntry.query.get_or_404(id)
+        JournalEntryLine.query.filter_by(journal_entry_id=id).delete()
+        db.session.delete(transaction)
+        db.session.commit()
+        flash('Transaction deleted successfully!', 'success')
+    except Exception as e:
+        flash(f'Error deleting transaction: {str(e)}', 'error')
+        db.session.expunge_all()
+    return redirect(url_for('transactions.list'))
 
 @transactions_bp.route('/export')
 @login_required

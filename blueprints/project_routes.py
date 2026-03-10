@@ -287,3 +287,60 @@ def export():
     response.headers['Content-Type'] = 'text/csv'
     
     return response
+
+@projects_bp.route('/<int:id>/volunteers/add', methods=['POST'])
+@login_required
+def add_volunteer(id):
+    """Add a volunteer to a project"""
+    project = Project.query.get_or_404(id)
+    if project.organization_id != current_user.organization_id:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects.list'))
+
+    member_id = request.form.get('member_id', type=int)
+    if member_id:
+        volunteer = Member.query.get_or_404(member_id)
+        if volunteer not in project.volunteers:
+            project.volunteers.append(volunteer)
+            db.session.commit()
+            flash(f'{volunteer.name} added as volunteer.', 'success')
+
+    return redirect(url_for('projects.edit', id=id))
+
+
+@projects_bp.route('/<int:id>/volunteers/<int:member_id>/remove', methods=['POST'])
+@login_required
+def remove_volunteer(id, member_id):
+    """Remove a volunteer from a project"""
+    project = Project.query.get_or_404(id)
+    if project.organization_id != current_user.organization_id:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects.list'))
+
+    member = Member.query.get_or_404(member_id)
+    if member in project.volunteers:
+        project.volunteers.remove(member)
+        db.session.commit()
+        flash(f'{member.name} removed from volunteers.', 'success')
+
+    return redirect(url_for('projects.edit', id=id))
+
+
+@projects_bp.route('/<int:id>/leaders/add', methods=['POST'])
+@login_required
+def add_leader(id):
+    """Add a leader to a project"""
+    project = Project.query.get_or_404(id)
+    if project.organization_id != current_user.organization_id:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects.list'))
+
+    member_id = request.form.get('member_id', type=int)
+    if member_id:
+        leader = Member.query.get_or_404(member_id)
+        if leader not in project.leaders:
+            project.leaders.append(leader)
+            db.session.commit()
+            flash(f'{leader.name} added as leader.', 'success')
+
+    return redirect(url_for('projects.edit', id=id))

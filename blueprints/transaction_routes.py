@@ -96,6 +96,52 @@ def new():
     today = date.today().strftime('%Y-%m-%d')
     return render_template('transaction_form.html', projects=projects, accounts=accounts, today=today)
 
+@transactions_bp.route('/simple', methods=['POST'])
+@login_required
+@admin_or_treasurer_required
+def simple():
+    """Create a simple two-line transaction with explicit debit/credit accounts"""
+    try:
+        entry_date = datetime.strptime(request.form.get('entry_date'), '%Y-%m-%d').date()
+        description = request.form.get('description')
+        project_id = int(request.form.get('project_id'))
+        amount = Decimal(request.form.get('amount', 0))
+        debit_account_id = int(request.form.get('debit_account_id'))
+        credit_account_id = int(request.form.get('credit_account_id'))
+
+        journal_entry = JournalEntry(
+            entry_date=entry_date,
+            description=description,
+            project_id=project_id,
+            reference_number=request.form.get('reference_number'),
+            created_by=current_user.id,
+            status='Posted'
+        )
+        db.session.add(journal_entry)
+        db.session.flush()
+
+        db.session.add(JournalEntryLine(
+            journal_entry_id=journal_entry.id,
+            account_id=debit_account_id,
+            debit_amount=amount,
+            credit_amount=Decimal('0'),
+            memo=description
+        ))
+        db.session.add(JournalEntryLine(
+            journal_entry_id=journal_entry.id,
+            account_id=credit_account_id,
+            debit_amount=Decimal('0'),
+            credit_amount=amount,
+            memo=description
+        ))
+
+        db.session.commit()
+        flash('Transaction posted successfully!', 'success')
+        return redirect(url_for('transactions.list'))
+    except Exception as e:
+        flash(f'Error creating transaction: {str(e)}', 'error')
+        db.session.expunge_all()
+        return redirect(url_for('transactions.list'))
 
 def _handle_simple_transaction():
     """Handle simple transaction entry for non-accountants"""

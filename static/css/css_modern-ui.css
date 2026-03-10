@@ -35,8 +35,8 @@ body {
     gap: 0.75rem;
 }
 
-.brand-logo {
-    height: 40px;
+.brand-icon {
+    height: 32px;
     width: auto;
 }
 
@@ -118,7 +118,7 @@ body {
 }
 
 .sidebar-link.active {
-    background-color: #eff6ff;
+    background-color: #f0faf4;
     color: var(--brand-primary);
     border-left: 3px solid var(--brand-primary);
 }
@@ -906,15 +906,15 @@ body {
 }
 
 .badge-info {
-    background-color: #dbeafe;
-    color: #1e40af;
-    border: 1px solid #bfdbfe;
+    background-color: #d1fae5;
+    color: var(--brand-primary-dark);
+    border: 1px solid #6ee7b7;
 }
 
 .badge-primary {
-    background-color: #dbeafe;
+    background-color: #d1fae5;
     color: var(--brand-primary);
-    border: 1px solid #93c5fd;
+    border: 1px solid #6ee7b7;
 }
 
 .badge-secondary {
@@ -1000,9 +1000,9 @@ body {
 }
 
 .alert-info {
-    background-color: #dbeafe;
-    color: #1e40af;
-    border-color: #bfdbfe;
+    background-color: #d1fae5;
+    color: var(--brand-primary-dark);
+    border-color: #6ee7b7;
 }
 
 .alert-dismissible .btn-close {
@@ -1148,7 +1148,7 @@ body {
 }
 
 .bg-light-primary {
-    background-color: #eff6ff !important;
+    background-color: #f0faf4 !important;
 }
 
 .bg-light-secondary {
@@ -1285,11 +1285,11 @@ body {
 }
 
 .login-logo {
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .login-logo-img {
-    width: 280px;
+    width: 220px;
     height: auto;
 }
 

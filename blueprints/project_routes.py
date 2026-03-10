@@ -102,12 +102,20 @@ def view(id):
 def new():
     """Create new project"""
     if request.method == 'POST':
+        start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d').date() if request.form.get('start_date') else None
+        end_date = datetime.strptime(request.form['end_date'], '%Y-%m-%d').date() if request.form.get('end_date') else None
+        if start_date and end_date and end_date < start_date:
+            flash('End date cannot be before start date.', 'error')
+            members = Member.query.filter_by(organization_id=current_user.organization_id, active=True).order_by(Member.name).all()
+            return render_template('project_form.html', project=None, members=members)
         try:
             project = Project(
                 name=request.form['name'],
                 description=request.form.get('description'),
-                start_date=datetime.strptime(request.form['start_date'], '%Y-%m-%d').date() if request.form.get('start_date') else None,
-                end_date=datetime.strptime(request.form['end_date'], '%Y-%m-%d').date() if request.form.get('end_date') else None,
+                #start_date=datetime.strptime(request.form['start_date'], '%Y-%m-%d').date() if request.form.get('start_date') else None,
+                #end_date=datetime.strptime(request.form['end_date'], '%Y-%m-%d').date() if request.form.get('end_date') else None,
+                start_date=start_date,
+                end_date=end_date,
                 status=request.form.get('status', 'Active'),
                 budget=Decimal(request.form.get('budget', 0)),
                 organization_id=current_user.organization_id

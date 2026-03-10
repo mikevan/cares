@@ -129,7 +129,7 @@ class TestJournalEntryValidation:
         # Should reject or show error
         assert b'balance' in response.data.lower() or response.status_code == 400
     
-    def test_journal_entry_requires_description(self, admin_client, organization):
+    def test_journal_entry_requires_description(self, admin_client, organization, db_session):
         """Test that journal entries require a description."""
         from tests.fixtures.factories import ProjectFactory
         

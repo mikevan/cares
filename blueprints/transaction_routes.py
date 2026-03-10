@@ -88,7 +88,7 @@ def new():
                 
         except Exception as e:
             flash(f'Error creating transaction: {str(e)}', 'error')
-            db.session.rollback()
+            db.session.expunge_all()  # Clear session to avoid stale data
     
     # GET request - show form
     projects = Project.query.filter_by(organization_id=current_user.organization_id).all()

@@ -105,3 +105,5 @@ run_tests.sh
 kofc-accounting-system.zip
 scripts/create_issues.ps1
 test_results.txt
+tests/__pycache__/conftest.cpython-314-pytest-8.3.4.pyc
+tests/functional/__pycache__/test_reports.cpython-312-pytest-8.3.4.pyc

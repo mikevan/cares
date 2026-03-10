@@ -95,7 +95,6 @@ tests/__pycache__/
 run_tests.py
 run_tests.bat
 run_tests.sh
-requirements-dev.txt
 
 # Keep smoke tests - these can run in production
 !tests/smoke/

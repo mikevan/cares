@@ -87,11 +87,6 @@ desktop.ini
 
 # ==================== Deployment-Specific ====================
 # Keep smoke tests for production, exclude all other tests
-tests/unit/
-tests/integration/
-tests/functional/
-tests/uat/
-tests/fixtures/
 tests/conftest.py
 tests/pytest.ini
 tests/__pycache__/

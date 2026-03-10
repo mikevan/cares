@@ -223,12 +223,12 @@ a:hover {
     color: var(--gray-600);
 }
 
-.report-summary-row td {
-    background-color: var(--brand-primary);
+.table .report-summary-row td,
+.table.report-summary-row td {
+    background-color: var(--brand-primary) !important;
     color: var(--brand-light) !important;
     font-weight: bold;
 }
-
 
 /* ============================================
    PAGE HEADERS & TITLES

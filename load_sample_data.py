@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Sample Data Loader for Knights of Columbus Accounting System
+Sample Data Loader for CARES
 Creates realistic demonstration data including:
 - Users in all roles (Admin, Treasurer, ProjectLeader, Member)
-- Members (20 Knights)
+- Members (20 sample members)
 - Projects (7 typical Council activities)
 - Transactions (40+ entries over 6 months, all mapped to projects)
 - Balanced financials showing healthy Council operations
@@ -91,9 +91,9 @@ def create_sample_users(org_id):
     return users
 
 def create_sample_members(org_id):
-    """Create realistic Knights of Columbus members"""
+    """Create realistic sample members"""
     
-    # Realistic Knights names
+    # Realistic sample member names
     knight_names = [
         ("James", "McCarthy", "123 Oak St", "Bentonville", "AR", "72712"),
         ("Robert", "O'Brien", "456 Maple Ave", "Rogers", "AR", "72756"),
@@ -146,7 +146,7 @@ def create_sample_members(org_id):
     return members
 
 def create_sample_projects(org_id, members):
-    """Create typical Knights of Columbus Council projects"""
+    """Create typical service organization projects"""
     
     projects_data = [
         {
@@ -296,7 +296,7 @@ def create_transaction(entry_date, description, project, reference, created_by_i
     return entry
 
 def create_sample_transactions(projects, users):
-    """Create realistic 6 months of transactions for a Knights Council"""
+    """Create realistic 6 months of transactions for a service organization"""
     
     # Get the treasurer user for most transactions
     treasurer = next((u for u in users if u.role == 'Treasurer'), users[0])
@@ -686,7 +686,7 @@ def main():
             print("   To reload, delete the database and run init_db.py first.")
             return
         
-        print("🎯 Loading Knights of Columbus Sample Data...")
+        print("🎯 Loading CARES Sample Data...")
         print()
         
         # Get organization
@@ -706,7 +706,7 @@ def main():
                 print(f"     • {user.username} ({user.role}) - Password: demo123")
             
             # Create members
-            print("\n⚔️  Creating Knights members...")
+            print("\n👥  Creating sample members...")
             members = create_sample_members(org.id)
             db.session.commit()
             print(f"   ✓ Created {len(members)} members")
@@ -758,7 +758,7 @@ def main():
             print("   1. Login to the system")
             print("   2. View the Dashboard for overview")
             print("   3. Check Reports → Balance Sheet to see financial position")
-            print("   4. Browse Members (20 Knights)")
+            print("   4. Browse Members (20 sample members)")
             print("   5. View Projects (7 Council activities)")
             print("   6. Review Transactions (40+ entries)")
             print("\n🎉 Ready for demonstration!\n")

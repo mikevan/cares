@@ -72,7 +72,7 @@ class TestIncomeStatement:
         assert response.status_code == 200
         
         # Should show net income/loss
-        assert b'Net' in response.data
+        assert b'NET INCOME' in response.data
     
     def test_income_statement_with_date_range(self, authenticated_client, organization):
         """Test income statement with date range filter."""

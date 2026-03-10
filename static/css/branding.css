@@ -225,7 +225,7 @@ a:hover {
 
 .report-summary-row td {
     background-color: var(--brand-primary);
-    color: var(--brand-light);
+    color: var(--brand-light) !important;
     font-weight: bold;
 }
 

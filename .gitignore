@@ -108,3 +108,6 @@ requirements-dev.txt
 # ==================== Documentation Drafts ====================
 *.draft.md
 *.wip.md
+kofc-accounting-system.zip
+scripts/create_issues.ps1
+test_results.txt

@@ -1,30 +1,30 @@
 /*
  * BRANDING.CSS
  * CARES Official Color Scheme
- * 
- * This file contains the brand colors and styling for the organization.
+ *
+ * This file contains the brand colors and styling for the application.
  * To rebrand for another organization, simply update the CSS variables
  * in the :root section below.
- * 
- * Official CARES Colors:
- * - Gold/Yellow: #FAA514 (Pantone PMS 137 C) - Symbol of riches through hard work
- * - Oxford Blue: #003595 (Pantone PMS 661 C) - Hope, calm tranquility
- * - Red: #FE0000 - Courage, valor, giving of one's self
- * - White: #FFFFFF - Nobility of purpose, purity
+ *
+ * CARES Colors:
+ * - Forest Green: #1A6B3C  - Primary brand color
+ * - Gold:         #F0A500  - Secondary accent
+ * - Amber:        #DC6B2F  - Call-to-action, warnings
+ * - White:        #FFFFFF  - Background, text on dark
  */
 
 :root {
     /* Primary Brand Colors */
-    --brand-primary: #003595;        /* Oxford Blue - Primary brand color */
-    --brand-secondary: #FAA514;      /* Gold/Yellow - Secondary accent */
-    --brand-accent: #FE0000;         /* Red - Call-to-action, alerts */
+    --brand-primary: #1A6B3C;        /* Forest Green - Primary brand color */
+    --brand-secondary: #F0A500;      /* Gold - Secondary accent */
+    --brand-accent: #DC6B2F;         /* Amber - Call-to-action, alerts */
     --brand-light: #FFFFFF;          /* White - Background, text on dark */
-    
+
     /* Extended Palette (derived from primary colors) */
-    --brand-primary-light: #1E5BB8;  /* Lighter blue for hovers */
-    --brand-primary-dark: #002366;   /* Darker blue for emphasis */
-    --brand-secondary-light: #FFC04D; /* Lighter gold for hovers */
-    --brand-secondary-dark: #D88C00; /* Darker gold */
+    --brand-primary-light: #2E8A52;  /* Mid green for hovers */
+    --brand-primary-dark: #0F4022;   /* Dark green for emphasis */
+    --brand-secondary-light: #F5BC3C; /* Light gold for hovers */
+    --brand-secondary-dark: #C88700; /* Dark gold */
     
     /* Neutral Colors */
     --gray-100: #F8F9FA;
@@ -46,6 +46,21 @@
     /* Typography */
     --font-family-primary: 'Arial', 'Helvetica Neue', sans-serif;
     --font-family-heading: 'Georgia', 'Times New Roman', serif;
+
+    /* Bootstrap variable overrides — ensures text-primary, btn-primary etc follow our green */
+    --bs-primary: #1A6B3C;
+    --bs-primary-rgb: 26, 107, 60;
+    --bs-link-color: #1A6B3C;
+    --bs-link-hover-color: #2E8A52;
+}
+
+/* Override Bootstrap text/bg utility classes */
+.text-primary {
+    color: var(--brand-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--brand-primary) !important;
 }
 
 /* ============================================
@@ -221,13 +236,6 @@ a:hover {
 
 .neutral {
     color: var(--gray-600);
-}
-
-.table .report-summary-row td,
-.table.report-summary-row td {
-    background-color: var(--brand-primary) !important;
-    color: var(--brand-light) !important;
-    font-weight: bold;
 }
 
 /* ============================================

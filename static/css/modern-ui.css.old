@@ -36,8 +36,8 @@ body {
 }
 
 .brand-icon {
-    height: 32px;
-    width: auto;
+    font-size: 1.75rem;
+    color: var(--brand-primary);
 }
 
 .brand-text {
@@ -118,7 +118,7 @@ body {
 }
 
 .sidebar-link.active {
-    background-color: #f0faf4;
+    background-color: #eff6ff;
     color: var(--brand-primary);
     border-left: 3px solid var(--brand-primary);
 }
@@ -301,7 +301,7 @@ body {
 
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(26, 107, 60, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 53, 149, 0.2);
 }
 
 .stat-card .stat-value {
@@ -561,7 +561,7 @@ body {
 .form-control:focus,
 .form-select:focus {
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px rgba(26, 107, 60, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 53, 149, 0.1);
     outline: none;
 }
 
@@ -590,7 +590,7 @@ body {
 
 .form-check-input:focus {
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px rgba(26, 107, 60, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 53, 149, 0.1);
 }
 
 /* Form Grid Layout */
@@ -679,7 +679,7 @@ body {
     background-color: var(--brand-primary-dark);
     border-color: var(--brand-primary-dark);
     color: white;
-    box-shadow: 0 2px 4px rgba(26, 107, 60, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 53, 149, 0.2);
 }
 
 .btn-primary:active {
@@ -699,7 +699,7 @@ body {
     background-color: var(--brand-secondary-dark);
     border-color: var(--brand-secondary-dark);
     color: #1f2937;
-    box-shadow: 0 2px 4px rgba(240, 165, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(250, 165, 20, 0.2);
 }
 
 .btn-outline-primary {
@@ -906,15 +906,15 @@ body {
 }
 
 .badge-info {
-    background-color: #d1fae5;
-    color: var(--brand-primary-dark);
-    border: 1px solid #6ee7b7;
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
 }
 
 .badge-primary {
-    background-color: #d1fae5;
+    background-color: #dbeafe;
     color: var(--brand-primary);
-    border: 1px solid #6ee7b7;
+    border: 1px solid #93c5fd;
 }
 
 .badge-secondary {
@@ -1000,9 +1000,9 @@ body {
 }
 
 .alert-info {
-    background-color: #d1fae5;
-    color: var(--brand-primary-dark);
-    border-color: #6ee7b7;
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-color: #bfdbfe;
 }
 
 .alert-dismissible .btn-close {
@@ -1148,7 +1148,7 @@ body {
 }
 
 .bg-light-primary {
-    background-color: #f0faf4 !important;
+    background-color: #eff6ff !important;
 }
 
 .bg-light-secondary {
@@ -1285,12 +1285,15 @@ body {
 }
 
 .login-logo {
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
 }
 
-.login-logo-img {
-    width: 220px;
-    height: auto;
+.login-logo i,
+.login-header i {
+    font-size: 4rem;
+    color: var(--brand-primary);
+    margin-bottom: 0;
+    display: inline-block;
 }
 
 .login-title {

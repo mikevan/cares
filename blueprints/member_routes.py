@@ -32,10 +32,12 @@ def admin_or_treasurer_required(f):
 @login_required
 def list():
     """List all members"""
-    members = Member.query.filter_by(
-        organization_id=current_user.organization_id
-    ).order_by(Member.name).all()
-    return render_template('members.html', members=members)
+    search = request.args.get('search', '').strip()
+    query = Member.query.filter_by(organization_id=current_user.organization_id)
+    if search:
+        query = query.filter(Member.name.ilike(f'%{search}%'))
+    members = query.order_by(Member.name).all()
+    return render_template('members.html', members=members, search=search)
 
 
 @members_bp.route('/new', methods=['GET', 'POST'])

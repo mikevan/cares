@@ -212,6 +212,25 @@ def edit(id):
                           percent_used=percent_used,
                           view_mode=False)
 
+@projects_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
+def delete(id):
+    """Delete a project if it has no journal entries"""
+    project = Project.query.get_or_404(id)
+    
+    if project.organization_id != current_user.organization_id:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects.list'))
+    
+    entry_count = JournalEntry.query.filter_by(project_id=id).count()
+    if entry_count > 0:
+        flash(f'Cannot delete project "{project.name}" — it has {entry_count} journal entries.', 'error')
+        return redirect(url_for('projects.list'))
+    
+    db.session.delete(project)
+    db.session.commit()
+    flash(f'Project "{project.name}" deleted successfully.', 'success')
+    return redirect(url_for('projects.list'))
 
 @projects_bp.route('/export')
 @login_required

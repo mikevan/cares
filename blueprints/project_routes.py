@@ -135,7 +135,7 @@ def new():
             return redirect(url_for('projects.list'))
         except Exception as e:
             flash(f'Error adding project: {str(e)}', 'error')
-            db.session.rollback()
+            db.session.expunge_all()  # Clear session to avoid stale data
     
     members = Member.query.filter_by(
         organization_id=current_user.organization_id,

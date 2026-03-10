@@ -132,7 +132,7 @@ class TestProjectRoutes:
 class TestProjectBudgets:
     """Integration tests for project budget functionality."""
     
-    def test_project_budget_validation(self, admin_client, organization):
+    def test_project_budget_validation(self, admin_client, organization, db_session):
         """Test that project budget must be a valid number."""
         response = admin_client.post('/projects/new', data={
             'name': 'Test Project',

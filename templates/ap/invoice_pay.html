@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Record Payment - {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Record Payment</h1>
+    <a href="{{ url_for('ap.invoices') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Invoices
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card mb-3">
+            <div class="card-header"><h6>Invoice Summary</h6></div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <p><strong>Vendor:</strong> {{ invoice.vendor.name }}</p>
+                        <p><strong>Invoice #:</strong> {{ invoice.invoice_number or '—' }}</p>
+                        <p><strong>Invoice Date:</strong> {{ invoice.invoice_date.strftime('%m/%d/%Y') }}</p>
+                    </div>
+                    <div class="col-6">
+                        <p><strong>Due Date:</strong> {{ invoice.due_date.strftime('%m/%d/%Y') }}</p>
+                        <p><strong>Original Amount:</strong> ${{ "%.2f"|format(invoice.amount) }}</p>
+                        <p><strong>Amount Paid:</strong> ${{ "%.2f"|format(invoice.amount_paid or 0) }}</p>
+                    </div>
+                </div>
+                <hr>
+                <p class="fs-5"><strong>Balance Due: ${{ "%.2f"|format(invoice.amount_due) }}</strong></p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h6>Payment Details</h6></div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Amount *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0.01"
+                                       max="{{ invoice.amount_due }}"
+                                       class="form-control" name="amount"
+                                       value="{{ "%.2f"|format(invoice.amount_due) }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Date *</label>
+                            <input type="date" class="form-control" name="payment_date" value="{{ today }}" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reference / Check #</label>
+                        <input type="text" class="form-control" name="reference_number" placeholder="Check number, EFT ref, etc.">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-cash"></i> Record Payment
+                        </button>
+                        <a href="{{ url_for('ap.invoices') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header"><h6><i class="bi bi-info-circle"></i> What happens when you record payment</h6></div>
+            <div class="card-body small">
+                <p>Recording a payment automatically posts:</p>
+                <table class="table table-sm">
+                    <tr><td><strong>DR</strong></td><td>2110 Accounts Payable</td></tr>
+                    <tr><td><strong>CR</strong></td><td>1010 Operating Checking</td></tr>
+                </table>
+                <p class="text-muted">A partial payment leaves the invoice open with a reduced balance.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

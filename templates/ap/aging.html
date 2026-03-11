@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}AP Aging Report - {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Accounts Payable Aging</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <span class="text-muted me-3">As of {{ as_of.strftime('%B %d, %Y') }}</span>
+        <a href="{{ url_for('ap.invoices') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Invoices
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    {% for label, key in [('Current', 'Current'), ('1–30 Days', '1-30'), ('31–60 Days', '31-60'), ('61–90 Days', '61-90'), ('Over 90 Days', '90+')] %}
+    <div class="col">
+        <div class="card text-center {{ 'border-danger' if key in ['61-90', '90+'] else '' }}">
+            <div class="card-body py-2">
+                <div class="small text-muted">{{ label }}</div>
+                <div class="fs-5 fw-bold {{ 'text-danger' if key in ['61-90', '90+'] and totals[key] > 0 else '' }}">
+                    ${{ "%.2f"|format(totals[key]) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    <div class="col">
+        <div class="card text-center border-dark">
+            <div class="card-body py-2">
+                <div class="small text-muted">Total Outstanding</div>
+                <div class="fs-5 fw-bold">${{ "%.2f"|format(grand_total) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for bucket_label, bucket_key in [('Current', 'Current'), ('1–30 Days Past Due', '1-30'), ('31–60 Days Past Due', '31-60'), ('61–90 Days Past Due', '61-90'), ('Over 90 Days Past Due', '90+')] %}
+{% if buckets[bucket_key] %}
+<div class="card mb-3">
+    <div class="card-header {{ 'bg-danger text-white' if bucket_key in ['61-90', '90+'] else '' }}">
+        <strong>{{ bucket_label }}</strong>
+        <span class="float-end">${{ "%.2f"|format(totals[bucket_key]) }}</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Vendor</th>
+                    <th>Invoice #</th>
+                    <th>Invoice Date</th>
+                    <th>Due Date</th>
+                    <th class="text-end">Balance Due</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in buckets[bucket_key] %}
+                <tr>
+                    <td>{{ inv.vendor.name }}</td>
+                    <td>{{ inv.invoice_number or '—' }}</td>
+                    <td>{{ inv.invoice_date.strftime('%m/%d/%Y') }}</td>
+                    <td>{{ inv.due_date.strftime('%m/%d/%Y') }}</td>
+                    <td class="text-end">${{ "%.2f"|format(inv.amount_due) }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('ap.invoice_pay', id=inv.id) }}" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-cash"></i> Pay
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if grand_total == 0 %}
+<div class="text-center py-5">
+    <i class="bi bi-check-circle" style="font-size: 3rem; color: #28a745;"></i>
+    <p class="text-muted mt-3">No outstanding invoices.</p>
+</div>
+{% endif %}
+{% endblock %}

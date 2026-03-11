@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}1099 Report - {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">1099 Summary</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <form method="GET" class="d-flex align-items-center me-2">
+            <label class="me-2 text-muted">Year:</label>
+            <select class="form-select form-select-sm" name="year" onchange="this.form.submit()" style="width:auto;">
+                {% for y in range(year + 1, year - 5, -1) %}
+                <option value="{{ y }}" {{ 'selected' if y == year else '' }}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <a href="{{ url_for('ap.invoices') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Invoices
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if results %}
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Vendor</th>
+                    <th>Contact</th>
+                    <th>Address</th>
+                    <th class="text-end">Total Paid {{ year }}</th>
+                    <th>1099 Required?</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results %}
+                <tr class="{{ 'table-warning' if row.total_paid >= 600 else '' }}">
+                    <td><strong>{{ row.vendor.name }}</strong></td>
+                    <td>{{ row.vendor.contact_name or '—' }}</td>
+                    <td>
+                        {% if row.vendor.address %}
+                        {{ row.vendor.address }}, {{ row.vendor.city }}, {{ row.vendor.state }} {{ row.vendor.zip_code }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="text-end">${{ "%.2f"|format(row.total_paid) }}</td>
+                    <td>
+                        {% if row.total_paid >= 600 %}
+                        <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Yes (≥$600)</span>
+                        {% else %}
+                        <span class="text-muted">Not yet</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-file-earmark-text" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-3">No 1099 vendors on file. Mark vendors as "Requires 1099" when creating them.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<p class="text-muted small mt-2">Vendors paid $600 or more in a calendar year generally require a 1099-NEC. Consult your accountant for filing requirements.</p>
+{% endblock %}

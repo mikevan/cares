@@ -46,7 +46,9 @@ coverage.xml
 
 # Test reports
 tests/reports/
-*.html
+tests/reports/
+tests/**/*.html
+reports_test_report.html
 
 # Test databases
 test.db

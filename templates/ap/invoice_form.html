@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}New Invoice - {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">New Invoice</h1>
+    <a href="{{ url_for('ap.invoices') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Invoices
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Vendor *</label>
+                            <select class="form-select" name="vendor_id" required>
+                                <option value="">— Select Vendor —</option>
+                                {% for v in vendors %}
+                                <option value="{{ v.id }}">{{ v.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">
+                                <a href="{{ url_for('ap.vendor_new') }}">+ Add new vendor</a>
+                            </small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Invoice Number</label>
+                            <input type="text" class="form-control" name="invoice_number" placeholder="Vendor's invoice #">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Invoice Date *</label>
+                            <input type="date" class="form-control" name="invoice_date" value="{{ today }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Due Date *</label>
+                            <input type="date" class="form-control" name="due_date" value="{{ today }}" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Amount *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Project *</label>
+                            <select class="form-select" name="project_id" required>
+                                <option value="">— Select Project —</option>
+                                {% for p in projects %}
+                                <option value="{{ p.id }}">{{ p.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Expense Account (GL) *</label>
+                        <select class="form-select" name="gl_account_id" required>
+                            <option value="">— Select Expense Account —</option>
+                            {% for acct in expense_accounts %}
+                            <option value="{{ acct.id }}">{{ acct.account_number }} — {{ acct.account_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Post Invoice
+                        </button>
+                        <a href="{{ url_for('ap.invoices') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><h6><i class="bi bi-info-circle"></i> What happens when you post</h6></div>
+            <div class="card-body small">
+                <p>Posting an invoice automatically creates a journal entry:</p>
+                <table class="table table-sm">
+                    <tr><td><strong>DR</strong></td><td>Selected Expense Account</td></tr>
+                    <tr><td><strong>CR</strong></td><td>2110 Accounts Payable</td></tr>
+                </table>
+                <p class="text-muted">The invoice will appear in the AP aging report until paid.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

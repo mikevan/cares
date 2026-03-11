@@ -19,11 +19,11 @@ import random
 def clear_existing_data():
     """Clear existing sample data"""
     print("Clearing existing data...")
-    JournalEntryLine.query.delete()
-    JournalEntry.query.delete()
     InvoicePayment.query.delete()
     Invoice.query.delete()
     Vendor.query.delete()
+    JournalEntryLine.query.delete()
+    JournalEntry.query.delete()
     
     # Delete junction tables first (foreign key constraints)
     db.session.execute(text("DELETE FROM project_members"))

@@ -116,3 +116,5 @@ tests/reports/test_report.html
 tests/functional/__pycache__/test_reports.cpython-312-pytest-8.3.4.pyc
 tests/__pycache__/conftest.cpython-314-pytest-8.3.4.pyc
 scripts/create_issues_2.ps1
+scripts/create_v2_issues_remaining.ps1
+scripts/create_v2_issues.ps1

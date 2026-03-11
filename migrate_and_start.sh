@@ -97,7 +97,7 @@ if [ "$RENDER" = "true" ] || [ "$PRODUCTION" = "true" ]; then
     echo "Workers: 2"
     echo ""
     
-    exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120
+    python migrate_production.py && python load_comprehensive_data.py && exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120
     
 else
     # Development mode

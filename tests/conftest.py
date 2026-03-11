@@ -49,7 +49,9 @@ from tests.fixtures.factories import (
     MemberFactory,
     ProjectFactory,
     JournalEntryFactory,
+    VendorFactory,
 )
+
 from pytest_factoryboy import register
 
 # Register factories as pytest fixtures
@@ -164,6 +166,7 @@ def app(postgres_container):
     from blueprints.project_routes import projects_bp
     from blueprints.report_routes import reports_bp
     from blueprints.settings_routes import settings_bp
+    from blueprints.ap_routes import ap_bp
     
     # Create Flask app
     app = Flask(__name__, 
@@ -210,6 +213,7 @@ def app(postgres_container):
     app.register_blueprint(projects_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(ap_bp)
 
     @app.route('/')
     def index():
@@ -344,6 +348,7 @@ def setup_factory_session(db_session):
         MemberFactory,
         ProjectFactory,
         JournalEntryFactory,
+        VendorFactory,
     ]:
         factory_class._meta.sqlalchemy_session = db_session
 

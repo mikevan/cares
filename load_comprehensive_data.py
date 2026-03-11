@@ -10,7 +10,7 @@ Demonstrates full nonprofit accounting capabilities including:
 """
 
 from app import app, db
-from models import Organization, User, Project, Member, JournalEntry, JournalEntryLine, ChartOfAccounts
+from models import Organization, User, Project, Member, JournalEntry, JournalEntryLine, ChartOfAccounts, Vendor, Invoice, InvoicePayment
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import text
@@ -21,6 +21,9 @@ def clear_existing_data():
     print("Clearing existing data...")
     JournalEntryLine.query.delete()
     JournalEntry.query.delete()
+    InvoicePayment.query.delete()
+    Invoice.query.delete()
+    Vendor.query.delete()
     
     # Delete junction tables first (foreign key constraints)
     db.session.execute(text("DELETE FROM project_members"))
@@ -594,6 +597,94 @@ def load_restricted_fund_transactions(projects):
     db.session.commit()
     print("Restricted fund transactions loaded.")
 
+def create_vendors(org_id):
+    """Create sample vendors for AP demonstration"""
+    print("Creating vendors...")
+    vendors_data = [
+        {'name': 'Acme Office Supplies', 'contact_name': 'Tom Harris',
+         'email': 'tom@acmeoffice.example.com', 'phone': '555-0201',
+         'payment_terms': 'Net30', 'is_1099': False},
+        {'name': 'City Printing Co.', 'contact_name': 'Susan Lee',
+         'email': 'susan@cityprinting.example.com', 'phone': '555-0202',
+         'payment_terms': 'Net15', 'is_1099': True},
+        {'name': 'St. Michael Hall Rental', 'contact_name': 'Fr. James',
+         'email': 'rental@stmichael.example.com', 'phone': '555-0203',
+         'payment_terms': 'Due on Receipt', 'is_1099': False},
+        {'name': 'Community Catering LLC', 'contact_name': 'Maria Torres',
+         'email': 'maria@commcatering.example.com', 'phone': '555-0204',
+         'payment_terms': 'Net30', 'is_1099': True},
+        {'name': 'Reliable Maintenance Inc.', 'contact_name': 'Dave Kowalski',
+         'email': 'dave@reliablemaint.example.com', 'phone': '555-0205',
+         'payment_terms': 'Net30', 'is_1099': True},
+    ]
+
+    vendors = []
+    for v in vendors_data:
+        vendor = Vendor(organization_id=org_id, **v)
+        db.session.add(vendor)
+        vendors.append(vendor)
+
+    db.session.commit()
+    print(f"  Created {len(vendors)} vendors.")
+    return vendors
+
+
+def load_ap_transactions(projects, vendors):
+    """Create sample AP invoices in various states"""
+    print("Loading AP transactions...")
+
+    admin_user = User.query.first()
+    project = projects[0]
+
+    acc_5010 = ChartOfAccounts.query.filter_by(account_number='5010').first()
+    acc_5710 = ChartOfAccounts.query.filter_by(account_number='5710').first()
+    acc_5610 = ChartOfAccounts.query.filter_by(account_number='5610').first()
+
+    from services.ap_service import create_invoice, record_payment
+    from decimal import Decimal
+    from datetime import date, timedelta
+
+    samples = [
+        # (vendor_idx, gl_account, invoice_number, days_ago_issued, days_until_due, amount, pay_amount)
+        (0, acc_5010, 'INV-2001', 45, -15, Decimal('235.00'), Decimal('235.00')),   # Paid
+        (1, acc_5710, 'INV-2002', 20,  10, Decimal('180.00'), None),                # Open, not due
+        (2, acc_5010, 'INV-2003', 60, -35, Decimal('500.00'), None),                # Open, overdue
+        (3, acc_5710, 'INV-2004', 10,  20, Decimal('1200.00'), Decimal('600.00')),  # Partial
+        (4, acc_5610, 'INV-2005', 30,   0, Decimal('85.00'),  None),                # Open, due today
+    ]
+
+    today = date.today()
+    for vendor_idx, gl_acc, inv_num, days_ago, days_until_due, amount, pay_amount in samples:
+        if not gl_acc:
+            continue
+        inv_date = today - timedelta(days=days_ago)
+        due_date = today + timedelta(days=days_until_due)
+
+        inv = create_invoice(
+            organization_id=project.organization_id,
+            vendor_id=vendors[vendor_idx].id,
+            project_id=project.id,
+            gl_account_number=gl_acc.account_number,
+            gl_account_id=gl_acc.id,
+            invoice_number=inv_num,
+            invoice_date=inv_date,
+            due_date=due_date,
+            amount=amount,
+            notes=f'Sample invoice {inv_num}',
+            created_by=admin_user.id,
+        )
+
+        if pay_amount:
+            record_payment(
+                invoice=inv,
+                payment_amount=pay_amount,
+                payment_date=today,
+                reference_number=f'CHK-{inv_num}',
+                created_by=admin_user.id,
+            )
+
+    print(f"  Created {len(samples)} sample invoices.")
+
 def main():
     """Main loader function"""
     print("\n=== CARES Comprehensive Data Loader ===\n")
@@ -624,6 +715,8 @@ def main():
     load_depreciation(projects)
     load_loan_payments(projects)
     load_restricted_fund_transactions(projects)
+    vendors = create_vendors(org.id)
+    load_ap_transactions(projects, vendors)
         
     print("\n=== Data Load Complete ===")
     print("\nSummary of loaded data:")
@@ -631,6 +724,8 @@ def main():
     print(f"- Projects: {len(projects)}")
     print(f"- Journal Entries: {JournalEntry.query.count()}")
     print(f"- Journal Entry Lines: {JournalEntryLine.query.count()}")
+    print(f"- Vendors: {Vendor.query.count()}")
+    print(f"- Invoices: {Invoice.query.count()}")
     print("\nThe system now demonstrates:")
     print("âœ“ Multiple asset types (cash, receivables, equipment, vehicles, investments)")
     print("âœ“ Various liabilities (payables, loans, deferred revenue, accrued expenses)")
@@ -642,4 +737,5 @@ def main():
     print("\nYou can now view complete financial statements showing the full capabilities!")
 
 if __name__ == '__main__':
-    main()
+    with app.app_context():
+        main()

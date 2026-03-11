@@ -24,7 +24,7 @@ import uuid
 from models import (
     db, Organization, User, Member, Project,
     ChartOfAccounts, JournalEntry, JournalEntryLine,
-    Donor, Donation
+    Donor, Donation, Vendor, Invoice
 )
 
 
@@ -419,4 +419,48 @@ class DonorFactory(BaseFactory):
     zip_code = Faker('zipcode')
     tax_id = Faker('ssn')
     donor_type = 'Individual'
+    created_at = LazyAttribute(lambda x: datetime.utcnow())
+
+# =============================================================================
+# VENDOR FACTORY
+# =============================================================================
+
+class VendorFactory(BaseFactory):
+    class Meta:
+        model = Vendor
+
+    name = Faker('company')
+    contact_name = Faker('name')
+    email = Faker('company_email')
+    phone = Faker('phone_number')
+    address = Faker('street_address')
+    city = Faker('city')
+    state = Faker('state_abbr')
+    zip_code = Faker('zipcode')
+    payment_terms = 'Net30'
+    is_1099 = False
+    active = True
+    organization = SubFactory(OrganizationFactory)
+    created_at = LazyAttribute(lambda x: datetime.utcnow())
+
+
+# =============================================================================
+# INVOICE FACTORY
+# =============================================================================
+
+class InvoiceFactory(BaseFactory):
+    class Meta:
+        model = Invoice
+
+    organization = SubFactory(OrganizationFactory)
+    vendor = SubFactory(VendorFactory)
+    project = SubFactory(ProjectFactory)
+    gl_account_id = 1  # Override in tests with a real account id
+    invoice_number = Sequence(lambda n: f'INV-{n:05d}')
+    invoice_date = LazyAttribute(lambda x: date.today())
+    due_date = LazyAttribute(lambda x: date.today() + timedelta(days=30))
+    amount = Faker('pydecimal', left_digits=4, right_digits=2, positive=True)
+    amount_paid = Decimal('0.00')
+    status = 'Open'
+    created_by = 1  # Override in tests with a real user id
     created_at = LazyAttribute(lambda x: datetime.utcnow())

@@ -5,7 +5,7 @@ FASB ASC 958 Compliant Double-Entry Accounting
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 db = SQLAlchemy()
@@ -221,4 +221,130 @@ class Currency(db.Model):
     symbol = db.Column(db.String(10), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     is_default = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+# ==================== ACCOUNTS PAYABLE ====================
+
+class Vendor(db.Model):
+    """Vendor/supplier directory for accounts payable"""
+    __tablename__ = 'vendors'
+
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    contact_name = db.Column(db.String(200))
+    email = db.Column(db.String(200))
+    phone = db.Column(db.String(50))
+    address = db.Column(db.Text)
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(50))
+    zip_code = db.Column(db.String(20))
+    payment_terms = db.Column(db.String(50), default='Net30')
+    is_1099 = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    invoices = db.relationship('Invoice', backref='vendor', lazy='dynamic')
+
+
+class Invoice(db.Model):
+    """Vendor invoices — accounts payable"""
+    __tablename__ = 'invoices'
+
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
+    gl_account_id = db.Column(db.Integer, db.ForeignKey('chart_of_accounts.id'), nullable=False)
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'))
+    invoice_number = db.Column(db.String(100))
+    invoice_date = db.Column(db.Date, nullable=False)
+    due_date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    amount_paid = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
+    status = db.Column(db.String(20), default='Open')
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    payments = db.relationship('InvoicePayment', backref='invoice', lazy='dynamic',
+                               cascade='all, delete-orphan')
+    gl_account = db.relationship('ChartOfAccounts')
+    journal_entry = db.relationship('JournalEntry')
+
+    @property
+    def amount_due(self):
+        return (self.amount or Decimal('0.00')) - (self.amount_paid or Decimal('0.00'))
+
+    @property
+    def days_outstanding(self):
+        if self.status in ('Paid', 'Voided'):
+            return 0
+        return (date.today() - self.due_date).days
+
+    @property
+    def aging_bucket(self):
+        days = self.days_outstanding
+        if days <= 0:
+            return 'Current'
+        elif days <= 30:
+            return '1-30'
+        elif days <= 60:
+            return '31-60'
+        elif days <= 90:
+            return '61-90'
+        return '90+'
+
+
+class InvoicePayment(db.Model):
+    """Payments applied against a vendor invoice"""
+    __tablename__ = 'invoice_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'))
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    payment_date = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ==================== ACCOUNTS RECEIVABLE ====================
+
+class Receivable(db.Model):
+    """Amounts owed to the organization"""
+    __tablename__ = 'receivables'
+
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
+    gl_account_id = db.Column(db.Integer, db.ForeignKey('chart_of_accounts.id'), nullable=False)
+    payer_name = db.Column(db.String(200), nullable=False)
+    invoice_number = db.Column(db.String(100))
+    invoice_date = db.Column(db.Date, nullable=False)
+    due_date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    amount_received = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
+    status = db.Column(db.String(20), default='Open')
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    ar_payments = db.relationship('ReceivablePayment', backref='receivable', lazy='dynamic',
+                                  cascade='all, delete-orphan')
+
+    @property
+    def amount_due(self):
+        return (self.amount or Decimal('0.00')) - (self.amount_received or Decimal('0.00'))
+
+
+class ReceivablePayment(db.Model):
+    """Payments received against a receivable"""
+    __tablename__ = 'receivable_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    receivable_id = db.Column(db.Integer, db.ForeignKey('receivables.id'), nullable=False)
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'))
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    payment_date = db.Column(db.Date, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

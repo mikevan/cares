@@ -132,7 +132,38 @@
                         </a>
                     </div>
                 </div>
-
+                <!-- Accounts Payable Section (Collapsible) -->
+                {% if current_user.role in ['Admin', 'Treasurer'] %}
+                <div class="sidebar-section collapsible-section">
+                    <div class="sidebar-section-header">
+                        <i class="bi bi-receipt"></i>
+                        <span>Accounts Payable</span>
+                        <i class="bi bi-chevron-right chevron-icon"></i>
+                    </div>
+                    <div class="sidebar-section-content">
+                        <a href="{{ url_for('ap.invoices') }}" class="sidebar-link {% if request.endpoint == 'ap.invoices' %}active{% endif %}">
+                            <i class="bi bi-list"></i>
+                            <span>Invoices</span>
+                        </a>
+                        <a href="{{ url_for('ap.invoice_new') }}" class="sidebar-link {% if request.endpoint == 'ap.invoice_new' %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>New Invoice</span>
+                        </a>
+                        <a href="{{ url_for('ap.vendors') }}" class="sidebar-link {% if request.endpoint in ['ap.vendors', 'ap.vendor_new', 'ap.vendor_edit'] %}active{% endif %}">
+                            <i class="bi bi-building"></i>
+                            <span>Vendors</span>
+                        </a>
+                        <a href="{{ url_for('ap.aging') }}" class="sidebar-link {% if request.endpoint == 'ap.aging' %}active{% endif %}">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Aging Report</span>
+                        </a>
+                        <a href="{{ url_for('ap.report_1099') }}" class="sidebar-link {% if request.endpoint == 'ap.report_1099' %}active{% endif %}">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>1099 Report</span>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
                 <!-- Reports Section (Collapsible) -->
                 <div class="sidebar-section collapsible-section">
                     <a href="{{ url_for('reports.index') }}" class="sidebar-section-header {% if request.endpoint == 'reports.index' %}active{% endif %}" style="text-decoration: none; color: inherit;">

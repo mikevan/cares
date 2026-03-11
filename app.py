@@ -17,6 +17,7 @@ from blueprints.transaction_routes import transactions_bp
 from blueprints.project_routes import projects_bp
 from blueprints.report_routes import reports_bp
 from blueprints.settings_routes import settings_bp
+from blueprints.ap_routes import ap_bp
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False  # Treat /route and /route/ as equivalent, fixes 308/302 redirect issue
@@ -47,6 +48,7 @@ app.register_blueprint(transactions_bp)
 app.register_blueprint(projects_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(settings_bp)
+app.register_blueprint(ap_bp)
 
 @login_manager.user_loader
 def load_user(user_id):

@@ -6,7 +6,7 @@
     <title>{% block title %}CARES — Community Accounting{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/branding.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/' + (org_css_file | default('branding.css'))) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
 </head>
 <body class="{% if not current_user.is_authenticated %}login-page{% endif %}">
@@ -21,20 +21,37 @@
                     </button>
                     <div class="ms-3 d-none d-md-block">
                         <div class="brand-header">
-                            <img src="{{ url_for('static', filename='images/cares-icon.svg') }}" alt="" class="brand-icon">
+                            {% if org_code | default(None) %}
+                                <script>
+                                var logoFormats = ['svg', 'png', 'gif'];
+                                var logoFormatIndex = 0;
+                                function tryNextLogoFormat(img) {
+                                    logoFormatIndex++;
+                                    if (logoFormatIndex < logoFormats.length) {
+                                        img.src = img.src.replace(/\.\w+$/, '.' + logoFormats[logoFormatIndex]);
+                                    } else {
+                                        img.style.display = 'none';
+                                        document.getElementById('brand-icon-fallback').style.display = 'inline';
+                                    }
+                                }
+                                </script>
+                                <img id="org-logo"
+                                     src="{{ url_for('static', filename='images/' + org_code + '.svg') }}"
+                                     alt="{{ current_user.organization.name }}"
+                                     class="organization-logo"
+                                     onerror="tryNextLogoFormat(this)">
+                                <i class="bi bi-shield-fill-check brand-icon" id="brand-icon-fallback" style="display:none;"></i>
+                            {% else %}
+                                <i class="bi bi-shield-fill-check brand-icon"></i>
+                            {% endif %}
                             <div class="brand-text">
-                                <div class="brand-name">CARES</div>
-                                <div class="brand-subtitle">Community Accounting &amp; Resource Engagement System</div>
+                                <div class="brand-name">{{ current_user.organization.name if current_user.organization else APP_NAME or 'CARES' }}</div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="d-flex align-items-center">
-                    <span class="text-muted me-3 d-none d-md-inline">
-                        <i class="bi bi-building"></i> {{ current_user.organization.name if current_user.organization else 'Organization' }}
-                    </span>
-                    
                     <!-- User Dropdown -->
                     <div class="dropdown">
                         <button class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center" 

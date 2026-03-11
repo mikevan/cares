@@ -35,6 +35,8 @@ def index():
             org.email = request.form.get('email')
             org.website = request.form.get('website')
             org.fiscal_year_start = int(request.form.get('fiscal_year_start', 1))
+            css_code = request.form.get('css_file', '').strip()
+            org.css_file = (css_code + '.css') if css_code else None
             
             db.session.commit()
             flash('Settings updated successfully!', 'success')

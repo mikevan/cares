@@ -21,7 +21,20 @@
                     <input type="text" class="form-control" id="ein" name="ein" value="{{ org.ein if org else '' }}">
                 </div>
             </div>
-            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="css_file" class="form-label">
+                        Org Code
+                        <i class="bi bi-question-circle text-muted ms-1"
+                            data-bs-toggle="tooltip"
+                            title="The short name for your organization. Used to select the matching brand stylesheet (e.g. kofc → kofc.css). Leave blank for CARES defaults."></i>
+                    </label>
+                    <input type="text" class="form-control" id="css_file" name="css_file"
+                        value="{{ org.css_file[:-4] if org and org.css_file else '' }}"
+                        placeholder="e.g. kofc, lions, rotary">
+                    <div class="form-text">Letters and numbers only. Leave blank for default CARES branding.</div>
+                </div>
+            </div>
             <div class="mb-3">
                 <label for="address" class="form-label">Address</label>
                 <input type="text" class="form-control" id="address" name="address" value="{{ org.address if org else '' }}">
@@ -76,4 +89,10 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+</script>
 {% endblock %}

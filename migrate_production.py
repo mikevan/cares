@@ -7,7 +7,7 @@ Can be run multiple times safely (idempotent)
 from app import app, db
 from models import ChartOfAccounts, JournalEntry, JournalEntryLine, Project
 from datetime import datetime
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 def add_missing_accounts():
     """Add any missing accounts to the chart - safe to run multiple times"""
@@ -63,6 +63,17 @@ def add_missing_accounts():
         print(f"✓ Added {added_count} missing accounts")
     else:
         print("✓ All required accounts exist")
+
+def add_organization_css_file():
+    print("Step 0: Checking organizations table columns...")
+    inspector = inspect(db.engine)
+    columns = [col['name'] for col in inspector.get_columns('organizations')]
+    if 'css_file' not in columns:
+        db.session.execute(text('ALTER TABLE organizations ADD COLUMN css_file VARCHAR(100)'))
+        db.session.commit()
+        print("  + Added css_file column to organizations")
+    else:
+        print("✓ css_file column already exists")
 
 def fix_account_names():
     """Fix any accounts that have wrong names"""
@@ -190,6 +201,7 @@ def main():
             # Create all tables if they don't exist (handles fresh databases)
             db.create_all()
             print("✓ Database tables verified/created\n")
+            add_organization_css_file()
             
             # Step 1: Add missing accounts
             add_missing_accounts()

@@ -35,8 +35,20 @@ login_manager.init_app(app)
 
 @app.context_processor
 def inject_branding():
-    # Expose branding tokens to templates
-    return dict(APP_NAME=app.config.get('APP_NAME'), DEFAULT_ORGANIZATION=app.config.get('DEFAULT_ORGANIZATION'))
+    from models import Organization
+    org_css_file = 'branding.css'
+    org_code = None
+    if current_user.is_authenticated:
+        org = Organization.query.get(current_user.organization_id)
+        if org and org.css_file:
+            org_css_file = org.css_file
+            org_code = org.css_file[:-4]
+    return dict(
+        APP_NAME=app.config.get('APP_NAME'),
+        DEFAULT_ORGANIZATION=app.config.get('DEFAULT_ORGANIZATION'),
+        org_css_file=org_css_file,
+        org_code=org_code
+    )
 
 login_manager.login_view = 'auth.login' 
 
@@ -49,6 +61,7 @@ app.register_blueprint(projects_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(ap_bp)
+
 
 @login_manager.user_loader
 def load_user(user_id):

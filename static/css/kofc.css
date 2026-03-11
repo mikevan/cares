@@ -1,31 +1,27 @@
 /*
- * BRANDING.CSS
- * CARES Official Color Scheme
- * 
- * This file contains the brand colors and styling for the organization.
- * To rebrand for another organization, simply update the CSS variables
- * in the :root section below.
- * 
- * Official CARES Colors:
- * - Gold/Yellow: #FAA514 (Pantone PMS 137 C) - Symbol of riches through hard work
- * - Oxford Blue: #003595 (Pantone PMS 661 C) - Hope, calm tranquility
- * - Red: #FE0000 - Courage, valor, giving of one's self
- * - White: #FFFFFF - Nobility of purpose, purity
+ * KOFC.CSS
+ * Regalia - A CARES Edition for the Knights of Columbus
+ *
+ * Brand Colors:
+ * - Oxford Blue: #003595  (Pantone PMS 661 C) - Hope, calm tranquility
+ * - Gold:        #FAA514  (Pantone PMS 137 C) - Riches through hard work
+ * - Red:         #FE0000  - Courage, valor, giving of one's self
+ * - White:       #FFFFFF  - Nobility of purpose, purity
  */
 
 :root {
     /* Primary Brand Colors */
     --brand-primary: #003595;        /* Oxford Blue - Primary brand color */
-    --brand-secondary: #FAA514;      /* Gold/Yellow - Secondary accent */
+    --brand-secondary: #FAA514;      /* Gold - Secondary accent */
     --brand-accent: #FE0000;         /* Red - Call-to-action, alerts */
     --brand-light: #FFFFFF;          /* White - Background, text on dark */
-    
+
     /* Extended Palette (derived from primary colors) */
-    --brand-primary-light: #1E5BB8;  /* Lighter blue for hovers */
-    --brand-primary-dark: #002366;   /* Darker blue for emphasis */
-    --brand-secondary-light: #FFC04D; /* Lighter gold for hovers */
-    --brand-secondary-dark: #D88C00; /* Darker gold */
-    
+    --brand-primary-light: #1E5BB8;  /* Mid blue for hovers */
+    --brand-primary-dark: #002366;   /* Dark blue for emphasis */
+    --brand-secondary-light: #FFC04D; /* Light gold for hovers */
+    --brand-secondary-dark: #D88C00; /* Dark gold */
+
     /* Neutral Colors */
     --gray-100: #F8F9FA;
     --gray-200: #E9ECEF;
@@ -36,16 +32,31 @@
     --gray-700: #495057;
     --gray-800: #343A40;
     --gray-900: #212529;
-    
+
     /* Semantic Colors */
     --success: #28A745;
     --info: #17A2B8;
     --warning: #FFC107;
     --danger: #DC3545;
-    
+
     /* Typography */
     --font-family-primary: 'Arial', 'Helvetica Neue', sans-serif;
     --font-family-heading: 'Georgia', 'Times New Roman', serif;
+
+    /* Bootstrap variable overrides */
+    --bs-primary: #003595;
+    --bs-primary-rgb: 0, 53, 149;
+    --bs-link-color: #003595;
+    --bs-link-hover-color: #1E5BB8;
+}
+
+/* Override Bootstrap text/bg utility classes */
+.text-primary {
+    color: var(--brand-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--brand-primary) !important;
 }
 
 /* ============================================
@@ -181,8 +192,9 @@ a:hover {
 }
 
 .alert-success {
-    background-color: rgba(40, 167, 69, 0.1);
-    border-color: var(--success);
+    background-color: rgba(0, 53, 149, 0.1) !important;
+    border-color: var(--brand-primary) !important;
+    color: var(--brand-primary-dark) !important;
 }
 
 .alert-danger {
@@ -221,13 +233,6 @@ a:hover {
 
 .neutral {
     color: var(--gray-600);
-}
-
-.table .report-summary-row td,
-.table.report-summary-row td {
-    background-color: var(--brand-primary) !important;
-    color: var(--brand-light) !important;
-    font-weight: bold;
 }
 
 /* ============================================
@@ -371,11 +376,11 @@ h1, h2, h3, h4, h5, h6 {
     .navbar-brand {
         font-size: 1rem;
     }
-    
+
     .stat-card h3 {
         font-size: 1.5rem;
     }
-    
+
     .dashboard-stat .stat-value {
         font-size: 1.75rem;
     }
@@ -391,11 +396,11 @@ h1, h2, h3, h4, h5, h6 {
     .no-print {
         display: none !important;
     }
-    
+
     .page-title {
         border-bottom-color: var(--gray-800);
     }
-    
+
     h1, h2, h3, h4, h5, h6 {
         color: var(--gray-900);
     }
@@ -410,7 +415,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand-emblem {
-    /* Space for organization emblem or other organization logo */
     background-position: center;
     background-size: contain;
     background-repeat: no-repeat;

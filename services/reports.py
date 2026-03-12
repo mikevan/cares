@@ -332,102 +332,148 @@ class FinancialReports:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         if isinstance(end_date, str):
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-        
+
         org = Organization.query.get(self.org_id)
-        
+
         # Get cash accounts (typically 1010-1030)
         cash_accounts = ChartOfAccounts.query.filter(
             ChartOfAccounts.account_number.between('1010', '1030'),
             ChartOfAccounts.active == True
         ).all()
-        
+
         cash_account_ids = [acc.id for acc in cash_accounts]
-        
-        # Beginning cash balance
+
+        # Beginning and ending cash balances — used only for the reconciliation rows
         beginning_cash = sum(
             self.get_account_balance(acc.account_number, start_date - timedelta(days=1))
             for acc in cash_accounts
         )
-        
-        # Ending cash balance
         ending_cash = sum(
             self.get_account_balance(acc.account_number, end_date)
             for acc in cash_accounts
         )
-        
-        # Net change in cash
-        net_change = ending_cash - beginning_cash
-        
-        # Get all journal entries for the period
-        entries = JournalEntry.query            .join(Project)            .filter(
+
+        # Get all posted journal entries for the period
+        entries = (
+            JournalEntry.query
+            .join(Project)
+            .filter(
                 Project.organization_id == self.org_id,
                 JournalEntry.status == 'Posted',
                 JournalEntry.entry_date.between(start_date, end_date)
             ).all()
-        
-        # Group cash receipts and payments by project and account
-        # Look for transactions that affect cash accounts
-        cash_receipts = {}  # {project_name: {account_name: amount}}
-        cash_payments = {}  # {project_name: {account_name: amount}}
-        
+        )
+
+        # Buckets: {project_name: {account_label: Decimal}}
+        cash_receipts     = {}  # Operating: revenue credited (cash in)
+        cash_payments     = {}  # Operating: expense debited (cash out)
+        investing_receipts = {} # Investing: non-cash asset credited (cash in)
+        investing_payments = {} # Investing: non-cash asset debited (cash out)
+        financing_inflows  = {} # Financing: liability/net-asset credited (cash in)
+        financing_outflows = {} # Financing: liability/net-asset debited (cash out)
+
+        def _add(bucket, project_name, account_label, amount):
+            bucket.setdefault(project_name, {}).setdefault(account_label, Decimal('0'))
+            bucket[project_name][account_label] += amount
+
         for entry in entries:
             project_name = entry.project.name
-            
-            # Check if this entry affects a cash account
-            has_cash = any(line.account_id in cash_account_ids for line in entry.lines)
-            
-            if not has_cash:
-                continue  # Skip entries that don't affect cash
-            
-            # Process each line in the entry
+
+            # Only process entries that touch a cash account
+            if not any(line.account_id in cash_account_ids for line in entry.lines):
+                continue
+
             for line in entry.lines:
-                # Skip the cash account itself - we want to see what the other side is
                 if line.account_id in cash_account_ids:
-                    continue
-                
+                    continue  # skip the cash side itself
+
                 account = line.account
-                account_name = f"{account.account_number} - {account.account_name}"
-                
-                # Cash receipts: revenue accounts (4xxx) that are credited when cash is debited
-                if line.credit_amount > 0 and account.account_number.startswith('4'):
-                    if project_name not in cash_receipts:
-                        cash_receipts[project_name] = {}
-                    if account_name not in cash_receipts[project_name]:
-                        cash_receipts[project_name][account_name] = Decimal('0')
-                    cash_receipts[project_name][account_name] += line.credit_amount
-                
-                # Cash payments: expense accounts (5xxx) that are debited when cash is credited
-                elif line.debit_amount > 0 and account.account_number.startswith('5'):
-                    if project_name not in cash_payments:
-                        cash_payments[project_name] = {}
-                    if account_name not in cash_payments[project_name]:
-                        cash_payments[project_name][account_name] = Decimal('0')
-                    cash_payments[project_name][account_name] += line.debit_amount
-        
-        # Calculate totals
-        total_receipts = sum(
-            sum(accounts.values()) for accounts in cash_receipts.values()
-        )
-        
-        total_payments = sum(
-            sum(accounts.values()) for accounts in cash_payments.values()
-        )
-        
-        operating_activities = float(total_receipts - total_payments)
-        
+                label   = f"{account.account_number} - {account.account_name}"
+                num     = account.account_number
+
+                if num.startswith('4'):
+                    # Revenue account
+                    if line.credit_amount > 0:
+                        _add(cash_receipts, project_name, label, line.credit_amount)
+                    if line.debit_amount > 0:  # refund/reversal
+                        _add(cash_payments, project_name, label, line.debit_amount)
+
+                elif num.startswith('5'):
+                    # Expense account
+                    if line.debit_amount > 0:
+                        _add(cash_payments, project_name, label, line.debit_amount)
+                    if line.credit_amount > 0:  # reversal
+                        _add(cash_receipts, project_name, label, line.credit_amount)
+
+                elif num > '1030':
+                    # Non-cash asset account (1031 and above)
+                    if line.credit_amount > 0:  # asset reduced/sold → cash in
+                        _add(investing_receipts, project_name, label, line.credit_amount)
+                    if line.debit_amount > 0:   # asset purchased → cash out
+                        _add(investing_payments, project_name, label, line.debit_amount)
+
+                elif num.startswith('2') or num.startswith('3'):
+                    # Liability or Net Asset
+                    if line.credit_amount > 0:  # liability/net-asset increased → cash in
+                        _add(financing_inflows, project_name, label, line.credit_amount)
+                    if line.debit_amount > 0:   # liability/net-asset decreased → cash out
+                        _add(financing_outflows, project_name, label, line.debit_amount)
+
+        def _total(bucket):
+            return sum(sum(accts.values()) for accts in bucket.values())
+
+        def _floatify(bucket):
+            return {
+                proj: {acct: float(amt) for acct, amt in accts.items()}
+                for proj, accts in bucket.items()
+            }
+
+        total_receipts          = _total(cash_receipts)
+        total_payments          = _total(cash_payments)
+        total_inv_receipts      = _total(investing_receipts)
+        total_inv_payments      = _total(investing_payments)
+        total_fin_inflows       = _total(financing_inflows)
+        total_fin_outflows      = _total(financing_outflows)
+
+        operating_activities    = float(total_receipts - total_payments)
+        investing_activities    = float(total_inv_receipts - total_inv_payments)
+        financing_activities    = float(total_fin_inflows - total_fin_outflows)
+
+        # Net change is the sum of all three sections — must reconcile to ending - beginning
+        net_change_in_cash      = operating_activities + investing_activities + financing_activities
+
         return {
-            'organization': org.name if org else current_app.config.get('DEFAULT_ORGANIZATION', current_app.config.get('APP_NAME', 'CARES - Community Accounting & Resource Engagement System')),
+            'organization': org.name if org else current_app.config.get(
+                'DEFAULT_ORGANIZATION',
+                current_app.config.get('APP_NAME', 'CARES - Community Accounting & Resource Engagement System')
+            ),
             'period': f'{start_date.strftime("%B %d, %Y")} to {end_date.strftime("%B %d, %Y")}',
-            'cash_receipts': {proj: {acct: float(amt) for acct, amt in accounts.items()} for proj, accounts in cash_receipts.items()},
-            'cash_payments': {proj: {acct: float(amt) for acct, amt in accounts.items()} for proj, accounts in cash_payments.items()},
-            'total_receipts': float(total_receipts),
-            'total_payments': float(total_payments),
-            'operating_activities': operating_activities,
-            'investing_activities': 0.0,
-            'financing_activities': 0.0,
-            'net_change_in_cash': float(net_change),
-            'beginning_cash': float(beginning_cash),
-            'ending_cash': float(ending_cash)
+
+            # Operating
+            'cash_receipts':            _floatify(cash_receipts),
+            'cash_payments':            _floatify(cash_payments),
+            'total_receipts':           float(total_receipts),
+            'total_payments':           float(total_payments),
+            'operating_activities':     operating_activities,
+
+            # Investing
+            'investing_receipts':       _floatify(investing_receipts),
+            'investing_payments':       _floatify(investing_payments),
+            'total_investing_receipts': float(total_inv_receipts),
+            'total_investing_payments': float(total_inv_payments),
+            'investing_activities':     investing_activities,
+
+            # Financing
+            'financing_inflows':        _floatify(financing_inflows),
+            'financing_outflows':       _floatify(financing_outflows),
+            'total_financing_inflows':  float(total_fin_inflows),
+            'total_financing_outflows': float(total_fin_outflows),
+            'financing_activities':     financing_activities,
+
+            # Summary / reconciliation
+            'net_change_in_cash':       net_change_in_cash,
+            'beginning_cash':           float(beginning_cash),
+            'ending_cash':              float(ending_cash),
         }
 
     def functional_expenses(self, start_date, end_date):

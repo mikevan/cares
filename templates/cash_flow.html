@@ -35,9 +35,10 @@
         <h4 class="text-center">{{ data.organization }}</h4>
         <h5 class="text-center text-muted">Statement of Cash Flows</h5>
         <p class="text-center">{{ data.period }}</p>
-        
+
         <hr>
-        
+
+        <!-- ===================== OPERATING ACTIVITIES ===================== -->
         <h5>CASH RECEIPTS FROM OPERATING ACTIVITIES</h5>
         <table class="table table-striped">
             {% if data.cash_receipts %}
@@ -66,7 +67,7 @@
                 </tr>
             {% endif %}
         </table>
-        
+
         <h5 class="mt-4">CASH PAYMENTS FOR OPERATING ACTIVITIES</h5>
         <table class="table table-striped">
             {% if data.cash_payments %}
@@ -95,30 +96,115 @@
                 </tr>
             {% endif %}
         </table>
-        
-        <table class="table table-success mt-4">
+
+        <table class="table table-success mt-2">
             <tr class="fw-bold">
                 <td>NET CASH FROM OPERATING ACTIVITIES</td>
                 <td class="text-end {{ 'positive' if data.operating_activities >= 0 else 'negative' }}">${{ "%.2f"|format(data.operating_activities) }}</td>
             </tr>
         </table>
-        
+
+        <!-- ===================== INVESTING ACTIVITIES ===================== -->
         <h5 class="mt-4">CASH FLOWS FROM INVESTING ACTIVITIES</h5>
-        <table class="table">
-            <tr>
-                <td><em>No investing activities for this period</em></td>
-                <td class="text-end">${{ "%.2f"|format(data.investing_activities) }}</td>
-            </tr>
+        <table class="table table-striped">
+            {% if data.investing_receipts or data.investing_payments %}
+                {% if data.investing_receipts %}
+                    <tr class="table-secondary">
+                        <td colspan="2"><strong>Proceeds from Sale of Assets</strong></td>
+                    </tr>
+                    {% for project, accounts in data.investing_receipts.items() %}
+                        {% for account, amount in accounts.items() %}
+                        <tr>
+                            <td>&nbsp;&nbsp;&nbsp;{{ project }} — {{ account }}</td>
+                            <td class="text-end positive">${{ "%.2f"|format(amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    <tr>
+                        <td class="text-end"><em>Total Investing Receipts</em></td>
+                        <td class="text-end"><em>${{ "%.2f"|format(data.total_investing_receipts) }}</em></td>
+                    </tr>
+                {% endif %}
+                {% if data.investing_payments %}
+                    <tr class="table-secondary">
+                        <td colspan="2"><strong>Purchase of Assets</strong></td>
+                    </tr>
+                    {% for project, accounts in data.investing_payments.items() %}
+                        {% for account, amount in accounts.items() %}
+                        <tr>
+                            <td>&nbsp;&nbsp;&nbsp;{{ project }} — {{ account }}</td>
+                            <td class="text-end negative">${{ "%.2f"|format(amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    <tr>
+                        <td class="text-end"><em>Total Investing Payments</em></td>
+                        <td class="text-end"><em>${{ "%.2f"|format(data.total_investing_payments) }}</em></td>
+                    </tr>
+                {% endif %}
+                <tr class="fw-bold">
+                    <td>NET CASH FROM INVESTING ACTIVITIES</td>
+                    <td class="text-end {{ 'positive' if data.investing_activities >= 0 else 'negative' }}">${{ "%.2f"|format(data.investing_activities) }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td><em>No investing activities for this period</em></td>
+                    <td class="text-end">${{ "%.2f"|format(data.investing_activities) }}</td>
+                </tr>
+            {% endif %}
         </table>
-        
+
+        <!-- ===================== FINANCING ACTIVITIES ===================== -->
         <h5 class="mt-4">CASH FLOWS FROM FINANCING ACTIVITIES</h5>
-        <table class="table">
-            <tr>
-                <td><em>No financing activities for this period</em></td>
-                <td class="text-end">${{ "%.2f"|format(data.financing_activities) }}</td>
-            </tr>
+        <table class="table table-striped">
+            {% if data.financing_inflows or data.financing_outflows %}
+                {% if data.financing_inflows %}
+                    <tr class="table-secondary">
+                        <td colspan="2"><strong>Proceeds from Borrowings / Contributions to Net Assets</strong></td>
+                    </tr>
+                    {% for project, accounts in data.financing_inflows.items() %}
+                        {% for account, amount in accounts.items() %}
+                        <tr>
+                            <td>&nbsp;&nbsp;&nbsp;{{ project }} — {{ account }}</td>
+                            <td class="text-end positive">${{ "%.2f"|format(amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    <tr>
+                        <td class="text-end"><em>Total Financing Inflows</em></td>
+                        <td class="text-end"><em>${{ "%.2f"|format(data.total_financing_inflows) }}</em></td>
+                    </tr>
+                {% endif %}
+                {% if data.financing_outflows %}
+                    <tr class="table-secondary">
+                        <td colspan="2"><strong>Repayments / Distributions from Net Assets</strong></td>
+                    </tr>
+                    {% for project, accounts in data.financing_outflows.items() %}
+                        {% for account, amount in accounts.items() %}
+                        <tr>
+                            <td>&nbsp;&nbsp;&nbsp;{{ project }} — {{ account }}</td>
+                            <td class="text-end negative">${{ "%.2f"|format(amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    <tr>
+                        <td class="text-end"><em>Total Financing Outflows</em></td>
+                        <td class="text-end"><em>${{ "%.2f"|format(data.total_financing_outflows) }}</em></td>
+                    </tr>
+                {% endif %}
+                <tr class="fw-bold">
+                    <td>NET CASH FROM FINANCING ACTIVITIES</td>
+                    <td class="text-end {{ 'positive' if data.financing_activities >= 0 else 'negative' }}">${{ "%.2f"|format(data.financing_activities) }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td><em>No financing activities for this period</em></td>
+                    <td class="text-end">${{ "%.2f"|format(data.financing_activities) }}</td>
+                </tr>
+            {% endif %}
         </table>
-        
+
+        <!-- ===================== SUMMARY ===================== -->
         <table class="table table-primary mt-4">
             <tr class="fw-bold">
                 <td>NET CHANGE IN CASH</td>
@@ -133,14 +219,14 @@
                 <td class="text-end">${{ "%.2f"|format(data.ending_cash) }}</td>
             </tr>
         </table>
-        
+
         <div class="alert alert-info mt-4">
             <h6><i class="bi bi-info-circle"></i> Understanding the Statement of Cash Flows</h6>
             <p class="small mb-0">
                 This statement uses the <strong>direct method</strong>, showing actual cash receipts and payments:
-                <br>• <strong>Cash Receipts</strong> - All revenue received, grouped by project and account
-                <br>• <strong>Cash Payments</strong> - All expenses paid, grouped by project and account
-                <br>• <strong>Net Cash from Operating Activities</strong> - The difference between receipts and payments
+                <br>• <strong>Operating Activities</strong> - Cash from revenues received and expenses paid
+                <br>• <strong>Investing Activities</strong> - Cash from purchasing or selling non-cash assets
+                <br>• <strong>Financing Activities</strong> - Cash from borrowings, repayments, or net asset transactions
                 <br>• <strong>Beginning + Net Change = Ending Cash</strong> - Reconciles to your cash accounts
             </p>
         </div>

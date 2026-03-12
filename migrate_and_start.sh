@@ -58,17 +58,20 @@ echo ""
 echo "Step 2: Checking database initialization..."
 echo "----------------------------------------"
 
-if [ -f "init_db.py" ]; then
+# In production, migrate_production.py already handles all initialization.
+# Only run init_db.py in development.
+if [ "$RENDER" = "true" ] || [ "$PRODUCTION" = "true" ]; then
+    echo "Production mode - skipping init_db.py (migrate_production.py already ran)"
+elif [ -f "init_db.py" ]; then
     $PYTHON_CMD init_db.py
     INIT_EXIT_CODE=$?
-    
     if [ $INIT_EXIT_CODE -ne 0 ]; then
         echo ""
-        echo "❌ ERROR: Database initialization failed"
+        echo "ERROR: Database initialization failed"
         exit $INIT_EXIT_CODE
     fi
 else
-    echo "⚠ Warning: init_db.py not found, skipping initialization"
+    echo "Warning: init_db.py not found, skipping initialization"
 fi
 
 echo ""

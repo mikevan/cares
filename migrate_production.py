@@ -75,6 +75,26 @@ def add_organization_css_file():
     else:
         print("✓ css_file column already exists")
 
+def add_dues_columns():
+    """Add dues_amount to organizations and create member_dues_payments table"""
+    print("\nStep 0b: Checking dues columns...")
+    inspector = inspect(db.engine)
+
+    columns = [col['name'] for col in inspector.get_columns('organizations')]
+    if 'dues_amount' not in columns:
+        db.session.execute(text('ALTER TABLE organizations ADD COLUMN dues_amount NUMERIC(12,2)'))
+        db.session.commit()
+        print("  + Added dues_amount column to organizations")
+    else:
+        print("✓ dues_amount column already exists")
+
+    db.create_all()
+    tables = inspector.get_table_names()
+    if 'member_dues_payments' in tables:
+        print("✓ member_dues_payments table exists")
+    else:
+        print("  ⚠ member_dues_payments table not found after create_all()")
+
 def fix_account_names():
     """Fix any accounts that have wrong names"""
     print("\nStep 2: Verifying account names...")
@@ -205,6 +225,7 @@ def main():
             
             # Step 1: Add missing accounts
             add_missing_accounts()
+            add_dues_columns()
             
             # Step 2: Fix account names
             fix_account_names()

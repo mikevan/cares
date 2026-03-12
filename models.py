@@ -31,6 +31,7 @@ class Organization(db.Model):
     website = db.Column(db.String(200))
     fiscal_year_start = db.Column(db.Integer, default=1)
     css_file = db.Column(db.String(100), nullable=True)
+    dues_amount = db.Column(db.Numeric(12, 2), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -66,6 +67,7 @@ class User(UserMixin, db.Model):
             'Admin': ['all'],
             'Treasurer': ['view_financials', 'post_transactions', 'generate_reports'],
             'ProjectLeader': ['view_projects', 'submit_expenses'],
+            'Membership Coordinator': ['view_members', 'manage_dues'],
             'Member': ['view_dashboard', 'view_profile']
         }
         role_perms = permissions.get(self.role, [])
@@ -89,6 +91,30 @@ class Member(db.Model):
     organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class MemberDuesPayment(db.Model):
+    """Tracks annual dues payments per member per year"""
+    __tablename__ = 'member_dues_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey('members.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    paid_date = db.Column(db.Date, nullable=True)
+    include_in_transaction = db.Column(db.Boolean, default=True, nullable=False)
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    member = db.relationship('Member', backref='dues_payments')
+    journal_entry = db.relationship('JournalEntry')
+
+    __table_args__ = (
+        db.UniqueConstraint('member_id', 'year', name='uq_member_dues_year'),
+    )
+
+    @property
+    def is_paid(self):
+        return self.paid_date is not None
 
 project_members = db.Table('project_members',
     db.Column('project_id', db.Integer, db.ForeignKey('projects.id'), primary_key=True),

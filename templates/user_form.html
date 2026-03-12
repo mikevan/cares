@@ -54,6 +54,9 @@
                             <option value="ProjectLeader" {{ 'selected' if user and user.role == 'ProjectLeader' else '' }}>
                                 Project Leader - Limited to assigned projects
                             </option>
+                            <option value="Membership Coordinator" {{ 'selected' if user and user.role == 'Membership Coordinator' else '' }}>
+                                Membership Coordinator - Member and dues management
+                            </option>
                             <option value="Member" {{ 'selected' if user and user.role == 'Member' else '' }}>
                                 Member - View-only access
                             </option>

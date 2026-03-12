@@ -158,6 +158,12 @@
                     <li>View project budgets</li>
                     <li>View project member lists</li>
                 </ul>
+                {% elif user.role == 'Membership Coordinator' %}
+                <ul class="small">
+                    <li>View and manage members</li>
+                    <li>Manage annual dues roster</li>
+                    <li>No financial or user access</li>
+                </ul>
                 {% else %}
                 <ul class="small">
                     <li>View dashboard</li>

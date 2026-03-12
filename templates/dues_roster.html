@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Annual Dues Roster {{ year }} - {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-cash-coin"></i> Annual Dues Roster</h1>
+    <div class="btn-toolbar mb-2 mb-md-0 gap-2">
+        <!-- Year selector -->
+        <form method="GET" action="{{ url_for('members.dues_roster') }}" class="d-flex align-items-center gap-2">
+            <label class="mb-0 fw-semibold">Year:</label>
+            <select name="year" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto;">
+                {% for y in year_range %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<!-- Summary bar -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card text-center border-success">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-success" id="paid-count">{{ paid_count }}</div>
+                <div class="small text-muted">Paid</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-secondary">{{ total_active - paid_count }}</div>
+                <div class="small text-muted">Unpaid</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold">{{ total_active }}</div>
+                <div class="small text-muted">Active Members</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Roster table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Member</th>
+                        <th class="text-center">Dues Paid</th>
+                        <th class="text-center">Paid Date</th>
+                        <th class="text-center">Include in Transaction</th>
+                        <th class="text-center">GL Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in members %}
+                    {% set dues = dues_map.get(member.id) %}
+                    {% set is_paid = dues and dues.paid_date %}
+                    {% set has_je = dues and dues.journal_entry_id %}
+                    <tr id="row-{{ member.id }}">
+                        <td class="align-middle fw-semibold">{{ member.name }}</td>
+
+                        <!-- Dues Paid checkbox -->
+                        <td class="text-center align-middle">
+                            <div class="form-check d-flex justify-content-center">
+                                <input class="form-check-input dues-paid-cb"
+                                       type="checkbox"
+                                       data-member-id="{{ member.id }}"
+                                       data-year="{{ year }}"
+                                       {% if is_paid %}checked{% endif %}
+                                       {% if has_je %}disabled title="Transaction already posted"{% endif %}>
+                            </div>
+                        </td>
+
+                        <!-- Paid date -->
+                        <td class="text-center align-middle small text-muted" id="paid-date-{{ member.id }}">
+                            {% if is_paid %}
+                                {{ dues.paid_date.strftime('%Y-%m-%d') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <!-- Include in Transaction toggle -->
+                        <td class="text-center align-middle">
+                            {% if is_paid %}
+                            <div class="form-check form-switch d-flex justify-content-center">
+                                <input class="form-check-input include-txn-cb"
+                                       type="checkbox"
+                                       role="switch"
+                                       data-member-id="{{ member.id }}"
+                                       data-year="{{ year }}"
+                                       {% if not dues or dues.include_in_transaction %}checked{% endif %}
+                                       {% if has_je %}disabled title="Transaction already posted"{% endif %}>
+                            </div>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- GL status -->
+                        <td class="text-center align-middle">
+                            {% if has_je %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Posted (JE #{{ dues.journal_entry_id }})
+                                </span>
+                            {% elif is_paid and dues.include_in_transaction %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-clock"></i> Pending
+                                </span>
+                            {% elif is_paid %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-dash-circle"></i> Excluded
+                                </span>
+                            {% else %}
+                                <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if current_user.role in ["Admin", "Treasurer"] %}
+<form method="POST" action="{{ url_for('members.dues_create_transactions') }}" onsubmit="return confirmPost()" class="mt-3 text-end">
+    <input type="hidden" name="year" value="{{ year }}">
+    <span class="text-muted small me-3">
+        JE: Dr Cash (1010) / Cr Membership Dues (4110) &middot; Project: {{ dues_project.name }}
+        {% if org.dues_amount %} &middot; ${{ "%.2f"|format(org.dues_amount) }}/member{% endif %}
+    </span>
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-journal-plus"></i> Submit
+    </button>
+</form>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const YEAR = {{ year }};
+
+function confirmPost() {
+    const rows = document.querySelectorAll('tbody tr');
+    let eligible = 0;
+    rows.forEach(row => {
+        const paid = row.querySelector('.dues-paid-cb');
+        const incl = row.querySelector('.include-txn-cb');
+        if (paid && paid.checked && !paid.disabled && incl && incl.checked && !incl.disabled) {
+            eligible++;
+        }
+    });
+    if (eligible === 0) {
+        alert('No eligible members found. Mark members as paid and enable Include in Transaction.');
+        return false;
+    }
+    return confirm('Post dues transactions for ' + eligible + ' member(s)? One GL entry will be created per member.');
+}
+
+// ── Dues paid checkbox ──────────────────────────────────────────
+document.querySelectorAll('.dues-paid-cb').forEach(cb => {
+    cb.addEventListener('change', function () {
+        const memberId = this.dataset.memberId;
+        const paid = this.checked;
+
+        fetch('{{ url_for("members.dues_toggle") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({member_id: parseInt(memberId), year: YEAR, paid: paid})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                this.checked = !paid;  // revert
+                return;
+            }
+            // Update paid date cell
+            const dateCell = document.getElementById('paid-date-' + memberId);
+            if (dateCell) dateCell.textContent = data.paid_date || '—';
+
+            // Show/hide the include toggle
+            const row = document.getElementById('row-' + memberId);
+            if (row) {
+                const inclCell = row.querySelector('td:nth-child(4)');
+                const glCell = row.querySelector('td:nth-child(5)');
+                if (paid) {
+                    inclCell.innerHTML = `
+                        <div class="form-check form-switch d-flex justify-content-center">
+                            <input class="form-check-input include-txn-cb" type="checkbox" role="switch"
+                                   data-member-id="${memberId}" data-year="${YEAR}" checked>
+                        </div>`;
+                    glCell.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Pending</span>';
+                    // Re-attach listener on new element
+                    inclCell.querySelector('.include-txn-cb').addEventListener('change', toggleTransaction);
+                } else {
+                    inclCell.innerHTML = '<span class="text-muted small">—</span>';
+                    glCell.innerHTML = '<span class="text-muted small">—</span>';
+                }
+            }
+            // Update summary counts
+            updateSummary();
+        })
+        .catch(err => {
+            alert('Network error. Please try again.');
+            this.checked = !paid;
+        });
+    });
+});
+
+// ── Include in transaction toggle ──────────────────────────────
+function toggleTransaction() {
+    const memberId = this.dataset.memberId;
+    const include = this.checked;
+
+    fetch('{{ url_for("members.dues_toggle_transaction") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({member_id: parseInt(memberId), year: YEAR, include: include})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            this.checked = !include;  // revert
+            return;
+        }
+        // Update GL status badge
+        const row = document.getElementById('row-' + memberId);
+        if (row) {
+            const glCell = row.querySelector('td:nth-child(5)');
+            if (include) {
+                glCell.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Pending</span>';
+            } else {
+                glCell.innerHTML = '<span class="badge bg-secondary"><i class="bi bi-dash-circle"></i> Excluded</span>';
+            }
+        }
+    })
+    .catch(() => {
+        alert('Network error. Please try again.');
+        this.checked = !include;
+    });
+}
+
+document.querySelectorAll('.include-txn-cb').forEach(cb => {
+    cb.addEventListener('change', toggleTransaction);
+});
+
+// ── Summary counter ─────────────────────────────────────────────
+function updateSummary() {
+    const paid = document.querySelectorAll('.dues-paid-cb:checked').length;
+    const total = document.querySelectorAll('.dues-paid-cb').length;
+    const paidCard = document.getElementById('paid-count');
+    if (paidCard) paidCard.textContent = paid;
+    // unpaid is sibling card (second card body)
+    const cards = document.querySelectorAll('.row.g-3 .card .fs-4');
+    if (cards[1]) cards[1].textContent = total - paid;
+}
+</script>
+{% endblock %}

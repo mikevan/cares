@@ -202,7 +202,15 @@ def init_database():
         print("Step 1: Creating database tables...")
         db.create_all()
         print("✓ Database tables created/verified.\n")
-        
+
+        from sqlalchemy import inspect, text
+        _inspector = inspect(db.engine)
+        _org_cols = [c['name'] for c in _inspector.get_columns('organizations')]
+        if 'dues_amount' not in _org_cols:
+            db.session.execute(text('ALTER TABLE organizations ADD COLUMN dues_amount NUMERIC(12,2)'))
+            db.session.commit()
+            print("  + Added dues_amount column to organizations\n")
+
         # Step 2: Create default organization
         print("Step 2: Creating default organization...")
         if not Organization.query.first():

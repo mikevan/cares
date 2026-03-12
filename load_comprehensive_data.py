@@ -1003,6 +1003,10 @@ def main():
         if not user:
             raise RuntimeError("No admin user found. Run init_db.py first.")
 
+        if JournalEntry.query.count() > 0:
+            print("Demo data already loaded, skipping.")
+            return
+
         clear_existing_data()
 
         members  = create_members(org.id)

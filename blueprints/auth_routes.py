@@ -35,7 +35,11 @@ def login():
         else:
             flash('Invalid username or password', 'error')
     
-    return render_template('login.html')
+    #return render_template('login.html')
+    org = Organization.query.first()
+    return render_template('login.html',
+                       org_code=org.css_file[:-4] if org and org.css_file else None,
+                       org_name=org.name if org else 'CARES')
 
 
 @auth_bp.route('/logout')

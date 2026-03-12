@@ -44,11 +44,11 @@ def check_chart_of_accounts_complete():
 def check_comprehensive_data_loaded():
     """Check if comprehensive sample data is loaded"""
     # Check for specific projects from comprehensive data
-    project_names = ['Youth Education Program', 'Community Food Bank', 'Senior Wellness Center']
+    project_names = ['Youth Education Program', 'Community Food Bank', 'Senior Wellness Program']
     projects_exist = all(Project.query.filter_by(name=name).first() for name in project_names)
     
     # Check for reasonable number of transactions (comprehensive data has 100+)
-    has_transactions = JournalEntry.query.count() > 50
+    has_transactions = JournalEntry.query.count() > 100
     
     return projects_exist and has_transactions
 

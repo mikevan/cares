@@ -164,9 +164,11 @@ def detect_language(accept_language_header: str) -> str:
     candidates.sort(key=lambda x: x[1], reverse=True)
 
     for code, _ in candidates:
+        primary = code.split('-')[0]
+        if primary == 'en':
+            return 'en'
         if code in SUPPORTED_LANGUAGES:
             return code
-        primary = code.split('-')[0]
         if primary in SUPPORTED_LANGUAGES:
             return primary
 

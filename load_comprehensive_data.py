@@ -14,6 +14,9 @@ Demonstrates:
   - Open AR and open AP in 2026 for balance sheet aging demo
 
 No payroll - chapter volunteer model.
+
+DEMO SYSTEM: This loader always wipes and reloads on every startup.
+Preserved across restarts: organizations, chart_of_accounts, translation_cache.
 """
 
 from app import app, db
@@ -81,15 +84,41 @@ def je(project, entry_date, description, reference, lines, user_id):
 # ==================== CLEAR DATA ====================
 
 def clear_existing_data():
-    print("  Clearing existing transaction data...")
-    # TRUNCATE CASCADE handles all FK dependencies automatically
-    db.session.execute(text(
-        "TRUNCATE journal_entries, journal_entry_lines, members, projects "
-        "RESTART IDENTITY CASCADE"
-    ))
-    User.query.filter(User.id > 1).delete()
+    """
+    Wipe all transactional data for a clean demo reload.
+    Preserves: organizations, chart_of_accounts, translation_cache.
+    Admin user is preserved (reset by migrate_production.py before this runs).
+    """
+    print("  Clearing existing data for fresh demo load...")
+
+    # Delete in FK-safe order
+    tables = [
+        'journal_entry_lines',
+        'donations',
+        'member_dues_payments',
+        'invoices',
+        'journal_entries',
+        'vendors',
+        'donors',
+        'members',
+        'projects',
+    ]
+    for table in tables:
+        try:
+            db.session.execute(text(f'DELETE FROM {table}'))
+        except Exception as e:
+            print(f"  ⚠ Could not clear {table}: {e}")
+            db.session.rollback()
+
+    # Remove all users except admin (admin was just reset by migrate_production.py)
+    try:
+        db.session.execute(text("DELETE FROM users WHERE username != 'admin'"))
+    except Exception as e:
+        print(f"  ⚠ Could not clear non-admin users: {e}")
+        db.session.rollback()
+
     db.session.commit()
-    print("  ✓ Cleared.")
+    print("  ✓ Cleared (organizations, chart_of_accounts, translation_cache preserved)")
 
 # ==================== MEMBERS ====================
 
@@ -404,7 +433,6 @@ def load_2025(projects, members, user_id):
         ('1010', 0,    1500, 'Cash payment')],
        user_id)
 
-    # May utilities
     je(ops, date(2025, 5, 15), 'May utilities', 'UTIL-2505',
        [('5220', 295, 0,   'Electric, gas, water'),
         ('1010', 0,   295, 'Cash payment')],
@@ -993,21 +1021,19 @@ def main():
         print("Fiscal Years 2025 (complete) + 2026 (YTD March)")
         print("="*60 + "\n")
 
-        _load_accounts()
-
         org = Organization.query.first()
         if not org:
-            raise RuntimeError("No organization found. Run init_db.py first.")
+            raise RuntimeError("No organization found. Run migrate_production.py first.")
 
-        user = User.query.filter_by(role='Admin').first()
+        user = User.query.filter_by(username='admin').first()
         if not user:
-            raise RuntimeError("No admin user found. Run init_db.py first.")
+            raise RuntimeError("No admin user found. Run migrate_production.py first.")
 
-        if JournalEntry.query.count() > 0:
-            print("Demo data already loaded, skipping.")
-            return
-
+        # Always wipe and reload — this is a demo system
         clear_existing_data()
+
+        # Reload accounts cache after clear (chart_of_accounts was preserved)
+        _load_accounts()
 
         members  = create_members(org.id)
         projects = create_projects(org.id)
@@ -1015,9 +1041,8 @@ def main():
         load_2025(projects, members, user.id)
         load_2026(projects, members, user.id)
 
-        # Summary
-        entry_count = JournalEntry.query.count()
-        line_count  = JournalEntryLine.query.count()
+        entry_count  = JournalEntry.query.count()
+        line_count   = JournalEntryLine.query.count()
         member_count = Member.query.count()
 
         print("\n" + "="*60)
@@ -1028,9 +1053,9 @@ def main():
         print(f"  Journal entries: {entry_count}")
         print(f"  Journal lines:   {line_count}")
         print("\nOpen items on balance sheet:")
-        print("  AR - Grants Receivable:  $60,000 (2026 state grant)")
-        print("  AR - Accounts Receivable: $4,500 (2026 senior wellness fees)")
-        print("  AP - Accounts Payable:    $7,300 (food bank $1,800 + consulting $5,500)")
+        print("  AR - Grants Receivable:   $60,000 (2026 state grant)")
+        print("  AR - Accounts Receivable:  $4,500 (2026 senior wellness fees)")
+        print("  AP - Accounts Payable:     $7,300 (food bank $1,800 + consulting $5,500)")
         print("="*60 + "\n")
 
 

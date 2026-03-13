@@ -71,6 +71,11 @@ if /I "%~1"=="--smoke" (
     shift
     goto :parse
 )
+if /I "%~1"=="--uat" (
+    set MARKERS=-m uat
+    shift
+    goto :parse
+)
 set EXTRA_ARGS=!EXTRA_ARGS! %~1
 shift
 goto :parse
@@ -95,6 +100,7 @@ echo   --unit              Run only unit tests
 echo   --integration       Run only integration tests
 echo   --functional        Run only functional tests
 echo   --smoke             Run only smoke tests
+echo   --uat               Run only UAT tests
 echo.
 echo Environment:
 echo   Python: .venv (3.12.10)

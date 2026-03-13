@@ -2,6 +2,7 @@
 REM CARES Migrate and Start Script for Windows
 REM Runs database migrations then starts the application
 REM Safe to run multiple times - migrations are idempotent
+REM Demo system: wipes and reloads data on every startup
 
 echo ============================================
 echo CARES - Community Accounting System
@@ -79,30 +80,32 @@ if exist migrate_production.py (
 ) else (
     echo WARNING: migrate_production.py not found
     echo   Skipping migration step
-    echo   Database initialization will use init_db.py fallback
 )
 
 echo.
 
 REM ============================================
-REM Step 3: Initialize Database (if needed)
+REM Step 3: Load Demo Data
 REM ============================================
 echo ============================================
-echo Step 3: Checking database initialization...
+echo Step 3: Loading demo data...
 echo ============================================
+echo Note: This wipes and reloads all transactional data (demo system).
 echo.
 
-if exist init_db.py (
-    python init_db.py
+if exist load_comprehensive_data.py (
+    python load_comprehensive_data.py
     if errorlevel 1 (
         echo.
-        echo ERROR: Database initialization failed!
+        echo ERROR: Demo data load failed!
         echo.
         pause
         exit /b 1
     )
+    echo.
+    echo Demo data loaded successfully
 ) else (
-    echo WARNING: init_db.py not found, skipping initialization
+    echo WARNING: load_comprehensive_data.py not found, skipping
 )
 
 echo.
@@ -129,7 +132,7 @@ REM Set Flask environment variables
 set FLASK_APP=app.py
 set FLASK_ENV=development
 
-REM Start Flask (using flask run to avoid double initialization)
+REM Start Flask
 python -m flask run --host=0.0.0.0 --port=5000
 
 REM ============================================
@@ -140,7 +143,6 @@ echo ============================================
 echo Shutting down...
 echo ============================================
 
-REM Ask if user wants to stop PostgreSQL
 echo.
 set /p STOP_DB="Stop PostgreSQL container? (y/n): "
 if /i "%STOP_DB%"=="y" (

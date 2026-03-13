@@ -18,6 +18,8 @@ from blueprints.project_routes import projects_bp
 from blueprints.report_routes import reports_bp
 from blueprints.settings_routes import settings_bp
 from blueprints.ap_routes import ap_bp
+from blueprints.translation_routes import translation_bp
+from services.translation_service import translate_response, detect_language, SKIP_ROUTES
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False  # Treat /route and /route/ as equivalent, fixes 308/302 redirect issue
@@ -61,7 +63,7 @@ app.register_blueprint(projects_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(ap_bp)
-
+app.register_blueprint(translation_bp)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -105,8 +107,27 @@ def index():
                          cash_balance=cash_balance,
                          recent_transactions=recent_transactions)
 
+@app.after_request
+def maybe_translate(response):
+    """Automatically translate HTML responses for non-English browsers."""
+    if 'text/html' not in response.content_type:
+        return response
+    if request.path in SKIP_ROUTES or request.path.startswith('/static'):
+        return response
 
+    lang = detect_language(request.headers.get('Accept-Language', ''))
+    if lang == 'en':
+        return response
 
+    try:
+        html = response.get_data(as_text=True)
+        translated = translate_response(html, lang, request.path)
+        response.set_data(translated)
+    except Exception as exc:
+        app.logger.warning(f'Translation middleware error: {exc}')
+
+    response.headers['Vary'] = 'Accept-Language'
+    return response
 
 if __name__ == '__main__':
     init_database(app)

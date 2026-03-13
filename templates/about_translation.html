@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CARES Speaks Your Language</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --oxford-blue:  #002147;
+            --gold:         #FFC72C;
+            --red:          #C8102E;
+            --white:        #FFFFFF;
+            --light-gray:   #F8F9FA;
+            --mid-gray:     #6C757D;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #1a1a2e;
+            background: var(--white);
+            line-height: 1.6;
+        }
+
+        /* ── Header ── */
+        .site-header {
+            background: var(--oxford-blue);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .site-header .logo-mark {
+            width: 44px;
+            height: 44px;
+            background: var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--oxford-blue);
+            flex-shrink: 0;
+        }
+        .site-header .brand {
+            color: var(--white);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .site-header .brand span {
+            color: var(--gold);
+        }
+        .site-header .login-link {
+            margin-left: auto;
+            color: var(--gold);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border: 1px solid var(--gold);
+            padding: 0.35rem 0.9rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .site-header .login-link:hover {
+            background: var(--gold);
+            color: var(--oxford-blue);
+        }
+
+        /* ── Hero ── */
+        .hero {
+            background: linear-gradient(135deg, var(--oxford-blue) 0%, #003580 100%);
+            color: var(--white);
+            padding: 5rem 2rem;
+            text-align: center;
+        }
+        .hero .badge {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--oxford-blue);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 0.3rem 0.9rem;
+            border-radius: 20px;
+            margin-bottom: 1.5rem;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1.15;
+        }
+        .hero h1 span { color: var(--gold); }
+        .hero p {
+            font-size: 1.2rem;
+            opacity: 0.88;
+            max-width: 620px;
+            margin: 0 auto 2.5rem;
+        }
+        .hero .lang-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .hero .lang-pill {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: var(--white);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* ── Sections ── */
+        .section { padding: 4rem 2rem; }
+        .section.alt { background: var(--light-gray); }
+        .container { max-width: 960px; margin: 0 auto; }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--mid-gray);
+            margin-bottom: 0.5rem;
+        }
+        .section h2 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--oxford-blue);
+            margin-bottom: 1rem;
+        }
+        .section .lead {
+            font-size: 1.05rem;
+            color: #444;
+            max-width: 660px;
+            margin-bottom: 2.5rem;
+        }
+
+        /* ── How it works ── */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+        .step {
+            background: var(--white);
+            border: 1px solid #e0e4ea;
+            border-radius: 12px;
+            padding: 1.75rem;
+        }
+        .step .step-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--oxford-blue);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gold);
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+        .step h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--oxford-blue);
+            margin-bottom: 0.4rem;
+        }
+        .step p { font-size: 0.9rem; color: #555; }
+
+        /* ── Architecture ── */
+        .arch-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: center;
+        }
+        @media (max-width: 640px) {
+            .arch-grid { grid-template-columns: 1fr; }
+        }
+        .arch-text p { color: #444; margin-bottom: 1rem; }
+        .arch-diagram {
+            background: var(--oxford-blue);
+            border-radius: 14px;
+            padding: 1.75rem;
+            color: var(--white);
+        }
+        .arch-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .arch-row.orchestrator { background: rgba(255,199,44,0.15); border: 1px solid rgba(255,199,44,0.4); }
+        .arch-row.worker      { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); }
+        .arch-row.cache       { background: rgba(200,16,46,0.15); border: 1px solid rgba(200,16,46,0.4); }
+        .arch-row .arch-icon  { font-size: 1.2rem; flex-shrink: 0; }
+        .arch-row .arch-label { font-weight: 600; }
+        .arch-row .arch-desc  { font-size: 0.8rem; opacity: 0.75; margin-top: 0.1rem; }
+        .arch-arrow {
+            text-align: center;
+            color: rgba(255,255,255,0.35);
+            font-size: 1.1rem;
+            margin: 0.1rem 0;
+        }
+
+        /* ── Language grid ── */
+        .lang-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+        .lang-card {
+            background: var(--white);
+            border: 1px solid #e0e4ea;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .lang-card .lang-code {
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: var(--oxford-blue);
+            color: var(--white);
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .lang-card .lang-name { font-size: 0.95rem; font-weight: 500; }
+
+        /* ── CTA ── */
+        .cta {
+            background: var(--oxford-blue);
+            color: var(--white);
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        .cta h2 { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
+        .cta p  { opacity: 0.85; max-width: 560px; margin: 0 auto 2rem; }
+        .cta .btn-gold {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--oxford-blue);
+            font-weight: 700;
+            padding: 0.85rem 2rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+        }
+        .cta .btn-gold:hover { opacity: 0.9; }
+
+        /* ── Footer ── */
+        footer {
+            background: #111827;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.85rem;
+        }
+        footer a { color: var(--gold); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="logo-mark">C</div>
+    <div class="brand"><span>CARES</span> — Community Accounting &amp; Resource Engagement System</div>
+    <a href="/login" class="login-link"><i class="bi bi-box-arrow-in-right"></i> Sign In</a>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="badge">Automatic Translation</div>
+    <h1>CARES speaks<br><span>your language.</span></h1>
+    <p>
+        No settings. No buttons. No browser extensions.
+        When a Spanish-speaking member opens CARES, they see Spanish — automatically.
+        Every page, every report, every label.
+    </p>
+    <div class="lang-pills">
+        {% for code, name in supported_languages.items() %}
+        <span class="lang-pill">{{ name }}</span>
+        {% endfor %}
+        <span class="lang-pill" style="border-color: rgba(255,199,44,0.6); color: var(--gold);">+ more coming</span>
+    </div>
+</section>
+
+<!-- How it works -->
+<section class="section alt">
+    <div class="container">
+        <div class="section-label">How it works</div>
+        <h2>Zero friction. Zero configuration.</h2>
+        <p class="lead">
+            Your browser already tells every website what language you prefer.
+            CARES listens — and responds in kind.
+        </p>
+        <div class="steps">
+            <div class="step">
+                <div class="step-icon"><i class="bi bi-globe2"></i></div>
+                <h3>Browser detects language</h3>
+                <p>Your browser sends its preferred language with every request. No extra steps needed.</p>
+            </div>
+            <div class="step">
+                <div class="step-icon"><i class="bi bi-cpu"></i></div>
+                <h3>AI translates the page</h3>
+                <p>A purpose-built language model translates the rendered HTML — preserving all formatting, numbers, and links.</p>
+            </div>
+            <div class="step">
+                <div class="step-icon"><i class="bi bi-lightning-charge"></i></div>
+                <h3>Cache serves it instantly</h3>
+                <p>Translations are cached by content. If the page hasn't changed, no API call is made — it's instant.</p>
+            </div>
+            <div class="step">
+                <div class="step-icon"><i class="bi bi-arrow-repeat"></i></div>
+                <h3>Smart invalidation</h3>
+                <p>Add a transaction or a member and the page re-translates automatically. Stale translations are never served.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Architecture -->
+<section class="section">
+    <div class="container">
+        <div class="arch-grid">
+            <div class="arch-text">
+                <div class="section-label">Architecture</div>
+                <h2>Built on specialized language models</h2>
+                <p>
+                    CARES doesn't use a general-purpose chatbot for translation.
+                    It uses a dedicated small language model (SLM) optimized for translation accuracy
+                    and speed — running entirely off-premise on serverless infrastructure.
+                </p>
+                <p>
+                    This means no translation server to maintain, no data leaving a controlled pipeline,
+                    and cost that scales to near zero with caching.
+                    At chapter scale, a full cache warm-up costs less than a postage stamp.
+                </p>
+                <p>
+                    Future editions will use fine-tuned models trained on nonprofit accounting terminology —
+                    so <em>net assets</em> becomes <em>activos netos</em>, not a generic dictionary translation.
+                </p>
+            </div>
+            <div class="arch-diagram">
+                <div class="arch-row orchestrator">
+                    <div class="arch-icon">⚙️</div>
+                    <div>
+                        <div class="arch-label">Language Detection</div>
+                        <div class="arch-desc">Accept-Language header → ISO code</div>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓</div>
+                <div class="arch-row cache">
+                    <div class="arch-icon">🗄️</div>
+                    <div>
+                        <div class="arch-label">Translation Cache</div>
+                        <div class="arch-desc">Route + language + content hash → cached HTML</div>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓ cache miss only</div>
+                <div class="arch-row worker">
+                    <div class="arch-icon">🤖</div>
+                    <div>
+                        <div class="arch-label">Translation SLM</div>
+                        <div class="arch-desc">Groq LPU · serverless · 500+ tokens/sec</div>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓</div>
+                <div class="arch-row cache">
+                    <div class="arch-icon">💾</div>
+                    <div>
+                        <div class="arch-label">Cache Write</div>
+                        <div class="arch-desc">Result stored · next request is instant</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Languages -->
+<section class="section alt">
+    <div class="container">
+        <div class="section-label">Supported Languages</div>
+        <h2>{{ supported_languages|length }} languages today, more on the way</h2>
+        <p class="lead">
+            CARES currently auto-translates for browsers set to any of these languages.
+            English is always the fallback.
+        </p>
+        <div class="lang-grid">
+            {% for code, name in supported_languages.items() %}
+            <div class="lang-card">
+                <span class="lang-code">{{ code }}</span>
+                <span class="lang-name">{{ name }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+    <h2>Want this for your chapter?</h2>
+    <p>
+        CARES is free for Knights of Columbus chapters.
+        Translation is included — no add-ons, no per-seat fees, no monthly translation bills.
+    </p>
+    <a href="/login" class="btn-gold">
+        <i class="bi bi-box-arrow-in-right"></i>&nbsp; Sign in to CARES
+    </a>
+</section>
+
+<footer>
+    <p>CARES &mdash; Community Accounting &amp; Resource Engagement System &nbsp;|&nbsp;
+       A <strong>REGALIA</strong> Edition for the Knights of Columbus &nbsp;|&nbsp;
+       <a href="/login">Sign In</a>
+    </p>
+</footer>
+
+</body>
+</html>

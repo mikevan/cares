@@ -375,3 +375,24 @@ class ReceivablePayment(db.Model):
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     payment_date = db.Column(db.Date, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ==================== TRANSLATION CACHE ====================
+
+class TranslationCache(db.Model):
+    """Cache for AI-translated page HTML. Survives demo reloads."""
+    __tablename__ = 'translation_cache'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    route           = db.Column(db.String(500), nullable=False)
+    language_code   = db.Column(db.String(10),  nullable=False)
+    content_hash    = db.Column(db.String(16),   nullable=False)
+    translated_html = db.Column(db.Text,          nullable=False)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'route', 'language_code', 'content_hash',
+            name='uq_translation_cache'
+        ),
+    )

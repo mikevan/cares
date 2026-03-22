@@ -47,6 +47,7 @@ def inject_branding():
             org_code = org.css_file[:-4]
     return dict(
         APP_NAME=app.config.get('APP_NAME'),
+        APP_VERSION=app.config.get('APP_VERSION'),
         DEFAULT_ORGANIZATION=app.config.get('DEFAULT_ORGANIZATION'),
         org_css_file=org_css_file,
         org_code=org_code

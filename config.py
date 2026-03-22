@@ -2,6 +2,16 @@
 Application configuration.
 Set APP_NAME and DEFAULT_ORGANIZATION here, or override using instance/config.py or environment variables.
 """
+import os
+
+def _read_version():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    version_file = os.path.join(base_dir, 'VERSION')
+    try:
+        with open(version_file, 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return 'unknown'
 
 class Config:
     # The visible application name shown in templates and generated reports
@@ -10,4 +20,5 @@ class Config:
     # Default organization name used as report fallback and initial seed data
     DEFAULT_ORGANIZATION = "Example Organization"
 
-    # You can add other configuration values here as needed
+    # Application version read from VERSION file in repo root
+    APP_VERSION = _read_version()

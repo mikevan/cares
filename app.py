@@ -40,11 +40,17 @@ def inject_branding():
     from models import Organization
     org_css_file = 'branding.css'
     org_code = None
+    # Authenticated users get their own organization's branding. Anonymous
+    # visitors (e.g. the login screen) fall back to the first organization in
+    # the deployment, matching the heuristic auth_routes.login() already uses
+    # to pick a logo/name to show before anyone has signed in.
     if current_user.is_authenticated:
         org = Organization.query.get(current_user.organization_id)
-        if org and org.css_file:
-            org_css_file = org.css_file
-            org_code = org.css_file[:-4]
+    else:
+        org = Organization.query.first()
+    if org and org.css_file:
+        org_css_file = org.css_file
+        org_code = org.css_file[:-4]
     return dict(
         APP_NAME=app.config.get('APP_NAME'),
         APP_VERSION=app.config.get('APP_VERSION'),

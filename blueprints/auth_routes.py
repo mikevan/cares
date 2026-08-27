@@ -105,7 +105,8 @@ def init_database(app):
             org = Organization(
                 name=app.config.get('DEFAULT_ORGANIZATION', 'CARES - Example Chapter'),
                 org_type='Chapter',
-                fiscal_year_start=1
+                fiscal_year_start=1,
+                css_file='kofc.css'  # REGALIA (Knights of Columbus edition) branding by default
             )
             db.session.add(org)
             db.session.commit()

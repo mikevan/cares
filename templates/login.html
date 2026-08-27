@@ -8,9 +8,30 @@
         <!-- Logo/Header -->
  <div class="login-header">
             <div class="login-logo">
+                {% if org_code %}
+                <script>
+                var loginLogoFormats = ['svg', 'png', 'gif'];
+                var loginLogoFormatIndex = 0;
+                function tryNextLoginLogoFormat(img) {
+                    loginLogoFormatIndex++;
+                    if (loginLogoFormatIndex < loginLogoFormats.length) {
+                        img.src = img.src.replace(/\.\w+$/, '.' + loginLogoFormats[loginLogoFormatIndex]);
+                    } else {
+                        img.onerror = null;
+                        img.src = "{{ url_for('static', filename='images/cares.svg') }}";
+                        img.alt = "CARES";
+                    }
+                }
+                </script>
+                <img src="{{ url_for('static', filename='images/' + org_code + '.svg') }}"
+                     alt="{{ org_name or 'CARES' }}"
+                     class="login-logo-img"
+                     onerror="tryNextLoginLogoFormat(this)">
+                {% else %}
                 <img src="{{ url_for('static', filename='images/cares.svg') }}"
                      alt="CARES"
                      class="login-logo-img">
+                {% endif %}
             </div>
         </div>
 

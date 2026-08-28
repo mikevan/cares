@@ -37,6 +37,9 @@ DEFAULT_CHART_OF_ACCOUNTS = [
         ('1210', 'Accounts Receivable', 'Asset', 'Receivables', 'Debit', True),
         ('1220', 'Pledges Receivable', 'Asset', 'Receivables', 'Debit', True),
         ('1230', 'Grants Receivable', 'Asset', 'Receivables', 'Debit', True),
+        ('1240', 'Due from Affiliated Organizations', 'Asset', 'Receivables', 'Debit', True),
+        ('1225', 'Discount on Pledges Receivable', 'Asset', 'Contra-Asset', 'Credit', True),
+        ('1290', 'Allowance for Doubtful Accounts', 'Asset', 'Contra-Asset', 'Credit', True),
         
         # Investments (1300-1399)
         ('1310', 'Short-term Investments', 'Asset', 'Investments', 'Debit', True),
@@ -90,6 +93,7 @@ DEFAULT_CHART_OF_ACCOUNTS = [
         ('4020', 'Corporate Contributions', 'Revenue', 'Contributions', 'Credit', True),
         ('4030', 'Foundation Grants', 'Revenue', 'Grants', 'Credit', True),
         ('4040', 'Government Grants', 'Revenue', 'Grants', 'Credit', True),
+        ('4130', 'Assessments & Per Capita Billed', 'Revenue', 'Assessments', 'Credit', True),
         
         # Membership & Fees (4100-4199)
         ('4110', 'Membership Dues', 'Revenue', 'Dues', 'Credit', True),
@@ -175,5 +179,6 @@ DEFAULT_CHART_OF_ACCOUNTS = [
         
         # Interest & Financing (5900-5999)
         ('5910', 'Interest Expense', 'Expense', 'Other Expenses', 'Debit', True),
+        ('5940', 'Provision for Uncollectible Accounts', 'Expense', 'Other Expenses', 'Debit', True),
         ('5920', 'Realized Investment Losses', 'Expense', 'Other Expenses', 'Debit', True),
 ]

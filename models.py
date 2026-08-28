@@ -526,15 +526,111 @@ class InvoicePayment(db.Model):
 
 # ==================== ACCOUNTS RECEIVABLE ====================
 
+# Receivable.receivable_type -- which body of guidance governs the row.
+#
+#   Exchange     The organization gave something and is owed payment: program
+#                fees, hall rental, billed event tickets. Ordinary ASC 606
+#                revenue. Recognized when earned; a receivable exists at once.
+#   Contribution A donor promised money (a pledge). ASC 958-605. Recognized
+#                only when UNCONDITIONAL -- see is_conditional below.
+#   Grant        A grantor committed funding. Usually a conditional
+#                contribution (a barrier plus a right of return), occasionally
+#                an exchange transaction. Same conditional test applies.
+#   Assessment   One organization billing another inside this deployment --
+#                a state or regional council charging its chapters per capita.
+#                See counterparty_organization_id.
+RECEIVABLE_TYPES = ['Exchange', 'Contribution', 'Grant', 'Assessment']
+
+# Net asset classification carried by the revenue this receivable recognizes.
+# A promise collectible in a future period carries an implied TIME restriction
+# even when the donor attached no purpose restriction -- which is why the
+# time option exists separately from purpose.
+RECEIVABLE_RESTRICTIONS = [
+    'Without Donor Restrictions',
+    'With Donor Restrictions - Purpose',
+    'With Donor Restrictions - Time',
+]
+
+RECEIVABLE_STATUSES = ['Conditional', 'Open', 'Partial', 'Paid', 'Written Off', 'Voided']
+
+
+class Payer(db.Model):
+    """Someone who owes the organization money.
+
+    Accounts receivable's counterpart to Vendor. A payer is deliberately a
+    real row rather than the free-text name this table used to carry, because
+    aging, statements and collection history are all per-payer and none of
+    them work against a string that is spelled three different ways.
+
+    counterparty_organization_id is what makes a state or regional council
+    possible: when the payer IS another organization in this deployment (a
+    chapter being billed per capita), that link is how the two sides of the
+    transaction find each other. Null for ordinary external payers.
+    """
+    __tablename__ = 'payers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    payer_type = db.Column(db.String(50), default='Individual')
+    contact_name = db.Column(db.String(200))
+    email = db.Column(db.String(200))
+    phone = db.Column(db.String(50))
+    address = db.Column(db.Text)
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(50))
+    zip_code = db.Column(db.String(20))
+    payment_terms = db.Column(db.String(50), default='Net30')
+    counterparty_organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'),
+                                              nullable=True)
+    notes = db.Column(db.Text)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    organization = db.relationship('Organization', foreign_keys=[organization_id])
+    counterparty_organization = db.relationship('Organization',
+                                                 foreign_keys=[counterparty_organization_id])
+
+    @property
+    def is_affiliated_organization(self):
+        return self.counterparty_organization_id is not None
+
+
 class Receivable(db.Model):
-    """Amounts owed to the organization"""
+    """Amounts owed to the organization.
+
+    Covers both things a nonprofit calls a receivable, which are not the same
+    thing and must not be treated as one:
+
+      an EXCHANGE receivable, where the organization delivered something and
+      is owed payment; and
+
+      a PROMISE TO GIVE, where a donor or grantor has committed money. Under
+      ASC 958-605 an unconditional promise is recognized as revenue and an
+      asset immediately, while a CONDITIONAL promise -- one with a measurable
+      performance barrier and a right of return or release -- is recognized as
+      NOTHING until that barrier is substantially met. Booking a conditional
+      grant the day the award letter arrives is the single most common way a
+      nonprofit overstates its assets, so this model refuses to post one: a
+      conditional row carries status 'Conditional', has no journal entry, and
+      appears on no balance sheet until recognize() is called.
+
+    Amounts collectible beyond one year are discounted to present value; the
+    face amount stays on `amount`, the recognized amount on `present_value`,
+    and the difference sits in a contra-asset account that unwinds to
+    contribution revenue over the collection period. See PledgeInstallment.
+    """
     __tablename__ = 'receivables'
 
     id = db.Column(db.Integer, primary_key=True)
     organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
     gl_account_id = db.Column(db.Integer, db.ForeignKey('chart_of_accounts.id'), nullable=False)
+    payer_id = db.Column(db.Integer, db.ForeignKey('payers.id'), nullable=True)
+    # Retained: rows created before payers existed, and a display fallback.
     payer_name = db.Column(db.String(200), nullable=False)
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'), nullable=True)
+
     invoice_number = db.Column(db.String(100))
     invoice_date = db.Column(db.Date, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
@@ -542,15 +638,131 @@ class Receivable(db.Model):
     amount_received = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
     status = db.Column(db.String(20), default='Open')
     notes = db.Column(db.Text)
+
+    # ---- ASC 958 ----------------------------------------------------------
+    receivable_type = db.Column(db.String(20), default='Exchange', nullable=False)
+    restriction = db.Column(db.String(40), default='Without Donor Restrictions')
+    is_conditional = db.Column(db.Boolean, default=False, nullable=False)
+    condition_description = db.Column(db.Text)
+    condition_met_date = db.Column(db.Date, nullable=True)
+
+    # ---- Present value (multi-year promises) -------------------------------
+    discount_rate = db.Column(db.Numeric(6, 4), nullable=True)
+    present_value = db.Column(db.Numeric(12, 2), nullable=True)
+    discount_unamortized = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
+
+    # ---- Collectibility ----------------------------------------------------
+    allowance_amount = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
+    written_off_date = db.Column(db.Date, nullable=True)
+
+    # ---- Inter-organization billing ---------------------------------------
+    # Set when this receivable is one organization billing another in this
+    # same deployment. counterparty_invoice_id is the AP invoice posted into
+    # the other organization's books, so the pairing is auditable from either
+    # side rather than being inferred from matching amounts and dates.
+    counterparty_organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'),
+                                              nullable=True)
+    counterparty_invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=True)
+
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    payer = db.relationship('Payer', backref='receivables')
+    journal_entry = db.relationship('JournalEntry', foreign_keys=[journal_entry_id])
+    organization = db.relationship('Organization', foreign_keys=[organization_id])
+    counterparty_organization = db.relationship('Organization',
+                                                 foreign_keys=[counterparty_organization_id])
+    counterparty_invoice = db.relationship('Invoice', foreign_keys=[counterparty_invoice_id])
 
     ar_payments = db.relationship('ReceivablePayment', backref='receivable', lazy='dynamic',
                                   cascade='all, delete-orphan')
+    installments = db.relationship('PledgeInstallment', backref='receivable', lazy='dynamic',
+                                    cascade='all, delete-orphan',
+                                    order_by='PledgeInstallment.due_date')
 
     @property
     def amount_due(self):
         return (self.amount or Decimal('0.00')) - (self.amount_received or Decimal('0.00'))
+
+    @property
+    def recognized_amount(self):
+        """What actually hit the books. A discounted promise is recognized at
+        present value, not face; a conditional promise at nothing at all."""
+        if self.is_recognized is False:
+            return Decimal('0.00')
+        if self.present_value is not None:
+            return self.present_value
+        return self.amount or Decimal('0.00')
+
+    @property
+    def is_recognized(self):
+        """False while a conditional promise's barrier is unmet -- no asset,
+        no revenue, no journal entry, disclosure only."""
+        if not self.is_conditional:
+            return True
+        return self.condition_met_date is not None
+
+    @property
+    def carrying_amount(self):
+        """Balance-sheet value: face, less the unamortized discount, less the
+        allowance for the portion not expected to be collected."""
+        if not self.is_recognized:
+            return Decimal('0.00')
+        return (self.amount_due
+                - (self.discount_unamortized or Decimal('0.00'))
+                - (self.allowance_amount or Decimal('0.00')))
+
+    @property
+    def days_outstanding(self):
+        if self.status in ('Paid', 'Voided', 'Written Off', 'Conditional'):
+            return 0
+        return (date.today() - self.due_date).days
+
+    @property
+    def aging_bucket(self):
+        days = self.days_outstanding
+        if days <= 0:
+            return 'Current'
+        elif days <= 30:
+            return '1-30'
+        elif days <= 60:
+            return '31-60'
+        elif days <= 90:
+            return '61-90'
+        return '90+'
+
+
+class PledgeInstallment(db.Model):
+    """One scheduled payment of a multi-year promise to give.
+
+    A five-year $50,000 pledge is not a $50,000 receivable. Each installment
+    is discounted to present value from its own due date, and the difference
+    between face and present value unwinds to contribution revenue as the
+    date approaches -- which is why the discount is tracked per installment
+    rather than once on the parent.
+    """
+    __tablename__ = 'pledge_installments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    receivable_id = db.Column(db.Integer, db.ForeignKey('receivables.id'), nullable=False)
+    sequence = db.Column(db.Integer, nullable=False)
+    due_date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    present_value = db.Column(db.Numeric(12, 2), nullable=False)
+    discount_amount = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
+    discount_amortized = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
+    amount_received = db.Column(db.Numeric(12, 2), default=Decimal('0.00'))
+    status = db.Column(db.String(20), default='Scheduled')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('receivable_id', 'sequence', name='uq_pledge_installment_seq'),
+    )
+
+    @property
+    def discount_remaining(self):
+        return (self.discount_amount or Decimal('0.00')) - (self.discount_amortized or Decimal('0.00'))
 
 
 class ReceivablePayment(db.Model):
@@ -559,10 +771,14 @@ class ReceivablePayment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     receivable_id = db.Column(db.Integer, db.ForeignKey('receivables.id'), nullable=False)
+    installment_id = db.Column(db.Integer, db.ForeignKey('pledge_installments.id'), nullable=True)
     journal_entry_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'))
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     payment_date = db.Column(db.Date, nullable=False)
+    reference_number = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    installment = db.relationship('PledgeInstallment', backref='payments')
 
 
 # ==================== TRANSLATION CACHE ====================

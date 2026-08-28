@@ -75,6 +75,8 @@ AUDITED_TABLES = [
     'invoice_payments',
     'receivables',
     'receivable_payments',
+    'payers',
+    'pledge_installments',
     # Knights of Columbus Form 1295 support (see services/kofc_form_1295.py):
     # both feed a compliance document a trustee signs and files, so
     # changes to either belong in the tamper-evident trail like

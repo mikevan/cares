@@ -297,6 +297,61 @@ def reset_admin_user():
 
 # ==================== CHART OF ACCOUNTS ====================
 
+def add_receivable_columns():
+    """Widen `receivables` / `receivable_payments` for the AR package.
+
+    Additive only -- no existing column is renamed, retyped or dropped, so a
+    database carrying rows from the previous (stub) Receivable model migrates
+    without touching them. Every new column is nullable or defaulted for the
+    same reason.
+    """
+    print("\nStep 0f: Checking accounts receivable columns...")
+    receivable_columns = [
+        ('payer_id', 'INTEGER'),
+        ('journal_entry_id', 'INTEGER'),
+        ('receivable_type', "VARCHAR(20) NOT NULL DEFAULT 'Exchange'"),
+        ('restriction', "VARCHAR(40) DEFAULT 'Without Donor Restrictions'"),
+        ('is_conditional', 'BOOLEAN NOT NULL DEFAULT FALSE'),
+        ('condition_description', 'TEXT'),
+        ('condition_met_date', 'DATE'),
+        ('discount_rate', 'NUMERIC(6,4)'),
+        ('present_value', 'NUMERIC(12,2)'),
+        ('discount_unamortized', 'NUMERIC(12,2) DEFAULT 0.00'),
+        ('allowance_amount', 'NUMERIC(12,2) DEFAULT 0.00'),
+        ('written_off_date', 'DATE'),
+        ('counterparty_organization_id', 'INTEGER'),
+        ('counterparty_invoice_id', 'INTEGER'),
+        ('updated_at', 'TIMESTAMP'),
+    ]
+    payment_columns = [
+        ('installment_id', 'INTEGER'),
+        ('reference_number', 'VARCHAR(100)'),
+    ]
+    added = 0
+    for table, columns in (('receivables', receivable_columns),
+                            ('receivable_payments', payment_columns)):
+        try:
+            existing = {c['name'] for c in inspect(db.engine).get_columns(table)}
+        except Exception as e:
+            print(f"  ! Could not inspect {table}: {e}")
+            continue
+        for name, ddl in columns:
+            if name in existing:
+                continue
+            try:
+                db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {name} {ddl}'))
+                added += 1
+                print(f"  + {table}.{name}")
+            except Exception as e:
+                db.session.rollback()
+                print(f"  ! Could not add {table}.{name}: {e}")
+    if added:
+        db.session.commit()
+        print(f"OK Added {added} accounts receivable column(s)")
+    else:
+        print("OK Accounts receivable columns already present")
+
+
 def add_missing_accounts():
     print("\nStep 3: Checking Chart of Accounts...")
     required_accounts = [
@@ -327,6 +382,14 @@ def add_missing_accounts():
         ('5860', 'Per Capita - State Council',              'Expense',  'Per Capita & Assessments','Debit'),
         ('5870', 'Charitable Donations Given',              'Expense',  'Charitable Giving',    'Debit'),
         ('4115', 'Initiation Fees',                          'Revenue',  'Dues',                 'Credit'),
+        # Accounts receivable package. 1225/1290 are contra-assets: their
+        # subtype must contain "contra" or reports will add them to total
+        # assets instead of subtracting them.
+        ('1240', 'Due from Affiliated Organizations',        'Asset',    'Receivables',          'Debit'),
+        ('1225', 'Discount on Pledges Receivable',           'Asset',    'Contra-Asset',         'Credit'),
+        ('1290', 'Allowance for Doubtful Accounts',          'Asset',    'Contra-Asset',         'Credit'),
+        ('4130', 'Assessments & Per Capita Billed',          'Revenue',  'Assessments',          'Credit'),
+        ('5940', 'Provision for Uncollectible Accounts',     'Expense',  'Other Expenses',       'Debit'),
         ('4415', 'Interest Income - Checking Account',       'Revenue',  'Investment Income',    'Credit'),
     ]
     added = 0
@@ -443,6 +506,7 @@ def main():
             add_must_change_password_column()
             add_project_is_fundraiser_column()
             add_kofc_council_identity_columns()
+            add_receivable_columns()
             create_membership_events_table()
             create_form_1295_submissions_table()
 

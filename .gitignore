@@ -122,3 +122,6 @@ scripts/create_v2_issues_remaining.ps1
 scripts/create_v2_issues.ps1
 load_comprehensive_data_old.py
 load_comprehensive_datad_old2.py
+
+# Exclude keepsafe and other versioning artifacts
+*.keepsafe

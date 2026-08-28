@@ -110,7 +110,6 @@ def build_balance_sheet_pdf(org, data, year=None):
         if not groups:
             rows.append(('None recorded', 0, 'item'))
         for subtype, accounts in groups.items():
-            rows.append((f"<i>{subtype}</i>", None, 'head')) if False else None
             for a in accounts:
                 rows.append((f"{a['number']} &nbsp; {a['name']}", a['balance'], 'item'))
             if subtype in subtotals:

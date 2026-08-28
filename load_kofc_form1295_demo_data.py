@@ -534,9 +534,32 @@ def get_org():
     return org
 
 
+def clear_demo_password_change_prompt(admin):
+    """Clear must_change_password on the demo admin.
+
+    migrate_production.py::reset_admin_user() sets this flag on every run,
+    and demo_kofc.ps1 calls that on every rebuild -- so without this, each
+    demo load re-arms the interstitial and app.py::require_password_change
+    bounces you to the change-password screen before you can see anything.
+    That is correct and wanted in production, where admin123 is a known
+    default that must not survive first login. It is pure friction on a
+    demo instance, where the login page prints the credential on purpose
+    and the whole database is rebuilt from scratch every run.
+
+    Scoped to the demo path only: nothing here touches how the flag behaves
+    for a real chapter (see init_chapter.py, which sets it deliberately).
+    """
+    if getattr(admin, 'must_change_password', False):
+        admin.must_change_password = False
+        db.session.commit()
+        print(f"  Cleared the forced password change on '{admin.username}' "
+              f"(demo instance -- see clear_demo_password_change_prompt).")
+
+
 def get_admin_user(org):
     admin = User.query.filter_by(organization_id=org.id, role='Admin').first()
     if admin:
+        clear_demo_password_change_prompt(admin)
         return admin
     admin = User(username='form1295_demo_admin', email='form1295-demo@example.com',
                  role='Admin', organization_id=org.id, active=True)

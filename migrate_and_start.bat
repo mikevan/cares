@@ -2,7 +2,8 @@
 REM CARES Migrate and Start Script for Windows
 REM Runs database migrations then starts the application
 REM Safe to run multiple times - migrations are idempotent
-REM Demo system: wipes and reloads data on every startup
+REM Demo data is loaded ONLY when DEMO_MODE=true. A production update
+REM never reloads data - see demo_guard.py.
 
 echo ============================================
 echo CARES - Community Accounting System
@@ -90,23 +91,41 @@ REM ============================================
 echo ============================================
 echo Step 3: Loading demo data...
 echo ============================================
-echo Note: This wipes and reloads all transactional data (demo system).
+echo Loaded only when DEMO_MODE=true. A production update never reloads data.
 echo.
 
-if exist load_comprehensive_data.py (
-    python load_comprehensive_data.py
-    if errorlevel 1 (
-        echo.
-        echo ERROR: Demo data load failed!
-        echo.
-        pause
-        exit /b 1
-    )
-    echo.
-    echo Demo data loaded successfully
-) else (
-    echo WARNING: load_comprehensive_data.py not found, skipping
-)
+if /i not "%DEMO_MODE%"=="true" goto :skip_demo_data
+
+set DEMO_LOADER=load_comprehensive_data.py
+if /i "%DEMO_DATASET%"=="kofc" set DEMO_LOADER=load_kofc_form1295_demo_data.py
+
+if not exist %DEMO_LOADER% goto :no_demo_loader
+echo DEMO_MODE=true - loading %DEMO_LOADER% (this WIPES existing data).
+python %DEMO_LOADER%
+if errorlevel 1 goto :demo_load_failed
+echo.
+echo Demo data loaded successfully (%DEMO_LOADER%)
+goto :after_demo_data
+
+:demo_load_failed
+echo.
+echo ERROR: Demo data load failed!
+echo.
+pause
+exit /b 1
+
+:no_demo_loader
+echo WARNING: %DEMO_LOADER% not found, skipping
+goto :after_demo_data
+
+:skip_demo_data
+echo Demo data load SKIPPED - DEMO_MODE is not "true".
+echo This is treated as a production update, and a production update never
+echo reloads data. Migrations above have been applied; existing data is
+echo untouched. Set DEMO_MODE=true (and DEMO_DATASET=kofc for the council
+echo book) on an instance that really is a demo.
+
+:after_demo_data
 
 echo.
 

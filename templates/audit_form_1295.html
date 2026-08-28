@@ -6,7 +6,11 @@
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">Form 1295 Schedules</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+        <a class="btn btn-sm btn-primary"
+           href="{{ url_for('audit.form_1295_pdf', period_start=period_start, period_end=period_end) }}"
+           target="_blank" rel="noopener">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
     </div>
 </div>
 
@@ -134,7 +138,23 @@
                         <tr><td>General council expenses</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.general_council_expenses) }})</td></tr>
                         <tr><td>Transfers to savings</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.transfers_to_savings) }})</td></tr>
                         <tr><td>Charitable donations / misc.</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.charitable_donations) }})</td></tr>
+                        <tr><td>Transfers to investments</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.transfers_to_investments) }})</td></tr>
+                        <tr><td class="text-muted">Total receipts</td><td class="text-end text-muted">${{ "%.2f"|format(schedule_b.treasurer.total_receipts) }}</td></tr>
+                        <tr><td class="text-muted">Total disbursements</td><td class="text-end text-muted">(${{ "%.2f"|format(schedule_b.treasurer.total_disbursements) }})</td></tr>
                         <tr class="table-light"><td><strong>Closing balance</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_b.treasurer.closing_balance) }}</strong></td></tr>
+                        {% if not schedule_b.treasurer.reconciles %}
+                        <tr class="table-danger">
+                          <td colspan="2">
+                            <strong>DOES NOT RECONCILE.</strong>
+                            Opening balance plus receipts minus disbursements comes to
+                            ${{ "%.2f"|format(schedule_b.treasurer.closing_balance - schedule_b.treasurer.unreconciled_difference) }},
+                            but the checking account balance is
+                            ${{ "%.2f"|format(schedule_b.treasurer.closing_balance) }} &mdash; a difference of
+                            ${{ "%.2f"|format(schedule_b.treasurer.unreconciled_difference) }}.
+                            Do not file this schedule until the difference is explained.
+                          </td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

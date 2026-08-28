@@ -2,7 +2,8 @@
 # CARES Migrate and Start Script for Linux/Mac/Production
 # Runs database migrations then starts the application
 # Safe to run multiple times - migrations are idempotent
-# Demo system: wipes and reloads data on every startup
+# Demo data is loaded ONLY when DEMO_MODE=true. A production update
+# never reloads data -- see demo_guard.py.
 
 echo "============================================"
 echo "CARES - Community Accounting System"
@@ -56,24 +57,40 @@ echo ""
 # ============================================
 echo "Step 2: Loading demo data..."
 echo "----------------------------------------"
-echo "Note: This wipes and reloads all transactional data (demo system)."
+echo "Loaded only when DEMO_MODE=true. A production update never reloads data."
 echo ""
 
-if [ -f "load_comprehensive_data.py" ]; then
-    $PYTHON_CMD load_comprehensive_data.py
-    LOAD_EXIT_CODE=$?
-
-    if [ $LOAD_EXIT_CODE -ne 0 ]; then
-        echo ""
-        echo "❌ ERROR: Demo data load failed with exit code $LOAD_EXIT_CODE"
-        echo "Application will not start. Please check the error messages above."
-        exit $LOAD_EXIT_CODE
+if [ "$DEMO_MODE" = "true" ]; then
+    # Which demo dataset: the generic nonprofit book, or the Knights of
+    # Columbus council book. Matches init_db.py's DEMO_DATASET handling.
+    DEMO_LOADER="load_comprehensive_data.py"
+    if [ "$DEMO_DATASET" = "kofc" ]; then
+        DEMO_LOADER="load_kofc_form1295_demo_data.py"
     fi
 
-    echo ""
-    echo "✓ Demo data loaded successfully"
+    if [ -f "$DEMO_LOADER" ]; then
+        echo "DEMO_MODE=true — loading $DEMO_LOADER (this WIPES existing data)."
+        $PYTHON_CMD "$DEMO_LOADER"
+        LOAD_EXIT_CODE=$?
+
+        if [ $LOAD_EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "❌ ERROR: Demo data load failed with exit code $LOAD_EXIT_CODE"
+            echo "Application will not start. Please check the error messages above."
+            exit $LOAD_EXIT_CODE
+        fi
+
+        echo ""
+        echo "✓ Demo data loaded successfully"
+    else
+        echo "⚠ Warning: $DEMO_LOADER not found — skipping demo data load"
+    fi
 else
-    echo "⚠ Warning: load_comprehensive_data.py not found — skipping demo data load"
+    echo "Demo data load SKIPPED — DEMO_MODE is not \"true\"."
+    echo "This is treated as a production update, and a production update never"
+    echo "reloads data. Migrations above have been applied; existing data is"
+    echo "untouched. Set DEMO_MODE=true (and DEMO_DATASET=kofc for the council"
+    echo "book) on an instance that really is a demo."
 fi
 
 echo ""

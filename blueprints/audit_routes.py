@@ -52,6 +52,9 @@ FILTERABLE_TABLES = [
 # form interaction at all.
 _DEFAULT_WINDOW_DAYS = 182
 
+# Rows shown on screen and listed on the PDF before truncating.
+_ROW_LIMIT = 500
+
 
 def _require_admin():
     if current_user.role != 'Admin':
@@ -84,18 +87,13 @@ def _diff_fields(old_data, new_data):
     return changes
 
 
-@audit_bp.route('/log')
-@login_required
-def log():
-    if not _require_admin():
-        return redirect(url_for('index'))
+def collect_log_rows(start_date, end_date, table_filter, limit):
+    """The rows behind both the screen and the PDF.
 
-    default_end = datetime.utcnow()
-    default_start = default_end - timedelta(days=_DEFAULT_WINDOW_DAYS)
-    start_date = _parse_date(request.args.get('start_date'), default_start)
-    end_date = _parse_date(request.args.get('end_date'), default_end)
-    table_filter = request.args.get('table_name') or ''
-
+    Extracted so the printed Trustee Audit Report cannot drift from what
+    /audit/log shows -- a signed document and the screen it came from
+    disagreeing would be worse than having no PDF at all.
+    """
     query = AuditLog.query.filter(
         AuditLog.changed_at >= start_date,
         # Inclusive of the whole end day, not just midnight.
@@ -103,7 +101,7 @@ def log():
     )
     if table_filter:
         query = query.filter(AuditLog.table_name == table_filter)
-    entries = query.order_by(AuditLog.changed_at.desc()).limit(500).all()
+    entries = query.order_by(AuditLog.changed_at.desc()).limit(limit).all()
 
     # changed_by_user_id deliberately has no ForeignKey (see models.py) --
     # a user row can be changed or removed later and the audit trail must
@@ -112,39 +110,24 @@ def log():
     actor_ids = {e.changed_by_user_id for e in entries if e.changed_by_user_id is not None}
     actors = {u.id: u.username for u in User.query.filter(User.id.in_(actor_ids)).all()} if actor_ids else {}
 
-    rows = []
-    for e in entries:
-        rows.append({
-            'entry': e,
-            'actor_name': actors.get(e.changed_by_user_id, 'System / Unknown'),
-            'diff': _diff_fields(e.old_data, e.new_data) if e.operation == 'UPDATE' else [],
-        })
-
-    return render_template(
-        'audit_log.html',
-        rows=rows,
-        start_date=start_date.strftime('%Y-%m-%d'),
-        end_date=end_date.strftime('%Y-%m-%d'),
-        table_filter=table_filter,
-        filterable_tables=FILTERABLE_TABLES,
-        truncated=len(entries) == 500,
-    )
+    return [{
+        'entry': e,
+        'actor_name': actors.get(e.changed_by_user_id, 'System / Unknown'),
+        'diff': _diff_fields(e.old_data, e.new_data) if e.operation == 'UPDATE' else [],
+    } for e in entries]
 
 
-@audit_bp.route('/verify', methods=['POST'])
-@login_required
-def verify():
+def verify_chain():
+    """Recompute every row's hash and confirm every link, returning the
+    result rather than flashing it.
+
+    Two independent checks, because neither subsumes the other: editing a
+    row's contents and recomputing that row's hash passes the first and
+    fails the second at the following row; deleting a row leaves every
+    surviving row internally consistent and still breaks the second at the
+    deletion point. Run over the whole table, not the report's date range
+    -- a break anywhere invalidates everything after it.
     """
-    Independently recompute every row's hash from its own stored columns,
-    and separately confirm every row's prev_hash matches the row actually
-    before it. Run over the whole table, not just whatever date range the
-    report happens to be showing -- a row tampered with or deleted
-    anywhere breaks the chain for everything after it, including ranges
-    that otherwise look untouched.
-    """
-    if not _require_admin():
-        return redirect(url_for('index'))
-
     self_consistency_failures = db.session.execute(text("""
         SELECT id, table_name, operation, changed_at
         FROM audit_log
@@ -168,17 +151,64 @@ def verify():
         ORDER BY id
     """)).fetchall()
 
-    total_rows = db.session.execute(text("SELECT count(*) FROM audit_log")).scalar()
+    total_rows = db.session.execute(text("SELECT count(*) FROM audit_log")).scalar() or 0
+    return {
+        'self_failures': len(self_consistency_failures),
+        'chain_breaks': len(chain_breaks),
+        'total_rows': total_rows,
+        'intact': not self_consistency_failures and not chain_breaks,
+    }
 
-    if not self_consistency_failures and not chain_breaks:
-        flash(f'Verified {total_rows} audit log entries. The chain is intact -- '
-              f'no row has been altered or removed since it was written.', 'success')
+
+@audit_bp.route('/log')
+@login_required
+def log():
+    if not _require_admin():
+        return redirect(url_for('index'))
+
+    default_end = datetime.utcnow()
+    default_start = default_end - timedelta(days=_DEFAULT_WINDOW_DAYS)
+    start_date = _parse_date(request.args.get('start_date'), default_start)
+    end_date = _parse_date(request.args.get('end_date'), default_end)
+    table_filter = request.args.get('table_name') or ''
+
+    rows = collect_log_rows(start_date, end_date, table_filter, _ROW_LIMIT)
+
+    return render_template(
+        'audit_log.html',
+        rows=rows,
+        start_date=start_date.strftime('%Y-%m-%d'),
+        end_date=end_date.strftime('%Y-%m-%d'),
+        table_filter=table_filter,
+        filterable_tables=FILTERABLE_TABLES,
+        truncated=len(rows) == _ROW_LIMIT,
+    )
+
+
+@audit_bp.route('/verify', methods=['POST'])
+@login_required
+def verify():
+    """
+    Independently recompute every row's hash from its own stored columns,
+    and separately confirm every row's prev_hash matches the row actually
+    before it. Run over the whole table, not just whatever date range the
+    report happens to be showing -- a row tampered with or deleted
+    anywhere breaks the chain for everything after it, including ranges
+    that otherwise look untouched.
+    """
+    if not _require_admin():
+        return redirect(url_for('index'))
+
+    result = verify_chain()
+    if result['intact']:
+        flash(f"Verified {result['total_rows']} audit log entries. The chain is intact -- "
+              f"no row has been altered or removed since it was written.", 'success')
     else:
-        flash(f'INTEGRITY FAILURE: {len(self_consistency_failures)} row(s) with contents that no '
-              f'longer match their own hash, {len(chain_breaks)} break(s) in the chain linkage '
-              f'(out of {total_rows} total rows). This means the database was modified outside '
-              f'the trigger that writes this table -- treat this as evidence, not a bug report.',
-              'error')
+        flash(f"INTEGRITY FAILURE: {result['self_failures']} row(s) with contents that no "
+              f"longer match their own hash, {result['chain_breaks']} break(s) in the chain "
+              f"linkage (out of {result['total_rows']} total rows). This means the database "
+              f"was modified outside the trigger that writes this table -- treat this as "
+              f"evidence, not a bug report.", 'error')
 
     return redirect(url_for('audit.log'))
 
@@ -275,6 +305,61 @@ def form_1295_attest():
     return redirect(url_for('audit.form_1295',
                              period_start=period_start.strftime('%Y-%m-%d'),
                              period_end=period_end.strftime('%Y-%m-%d')))
+
+
+@audit_bp.route('/log.pdf')
+@login_required
+def log_pdf():
+    """The Trustee Audit Report as a document, not a print of the page."""
+    if not _require_admin():
+        return redirect(url_for('index'))
+    from flask import Response
+    from services.audit_report_pdf import build_audit_report_pdf
+
+    default_end = datetime.utcnow()
+    default_start = default_end - timedelta(days=_DEFAULT_WINDOW_DAYS)
+    start_date = _parse_date(request.args.get('start_date'), default_start)
+    end_date = _parse_date(request.args.get('end_date'), default_end)
+    table_filter = request.args.get('table_name') or ''
+
+    rows = collect_log_rows(start_date, end_date, table_filter, _ROW_LIMIT)
+    buffer = build_audit_report_pdf(
+        org=current_user.organization,
+        rows=rows,
+        period_start=start_date,
+        period_end=end_date,
+        table_filter=table_filter,
+        verification=verify_chain(),
+        generated_by=current_user.username,
+        truncated=len(rows) == _ROW_LIMIT,
+        row_limit=_ROW_LIMIT,
+    )
+    filename = f'trustee-audit-report-{end_date.strftime("%Y-%m-%d")}.pdf'
+    response = Response(buffer.getvalue(), mimetype='application/pdf')
+    response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+
+
+@audit_bp.route('/form-1295.pdf')
+@login_required
+def form_1295_pdf():
+    """All three schedules as one document -- what the page's PDF button
+    produces, replacing a browser print of the screen."""
+    if not _require_admin():
+        return redirect(url_for('index'))
+    from services.kofc_form_1295_pdf import build_all_schedules_pdf
+    period_start, period_end = _resolve_period()
+    org_id = current_user.organization_id
+    return _schedule_pdf_response(
+        f'form-1295-{period_end.strftime("%Y-%m-%d")}.pdf',
+        lambda: build_all_schedules_pdf(
+            current_user.organization,
+            schedule_a(org_id, period_start, period_end),
+            schedule_b(org_id, period_start, period_end),
+            schedule_c(org_id, period_end),
+            get_submission(org_id, period_start, period_end),
+        ),
+    )
 
 
 def _schedule_pdf_response(filename, build_pdf):

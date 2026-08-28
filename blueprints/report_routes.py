@@ -211,3 +211,81 @@ def functional_expenses():
     current_app.logger.debug(f"Functional expenses for org={current_user.organization_id} year={year} -> total_expenses={data.get('total_expenses')}")
 
     return render_template('functional_expenses.html', data=data, year=year, available_years=available_years)
+# ==================== PDF EXPORTS ====================
+#
+# These replace the window.print() buttons the report pages used to carry.
+# A browser print produces the application's own chrome -- sidebar, nav,
+# filter controls -- around the numbers, which is a screenshot of a tool
+# rather than a financial statement. Each route below renders the same
+# data the page renders, through the shared branded document chrome in
+# services/pdf_branding.py.
+#
+# The year comes from the query string, which the page always supplies via
+# the PDF button, so the document matches whatever the reader is looking
+# at rather than silently defaulting to a different year.
+
+def _pdf_response(filename, buffer):
+    from flask import Response
+    response = Response(buffer.getvalue(), mimetype='application/pdf')
+    response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+
+
+def _pdf_year():
+    year = request.args.get('year', None, type=int)
+    if year:
+        return year
+    available = _get_available_years(current_user.organization_id)
+    return available[0] if available else date.today().year
+
+
+@reports_bp.route('/balance-sheet.pdf')
+@login_required
+def balance_sheet_pdf():
+    from services.financial_reports_pdf import build_balance_sheet_pdf
+    year = _pdf_year()
+    reports = FinancialReports(db.session, current_user.organization_id)
+    data = reports.balance_sheet_detailed(f'{year}-12-31')
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'balance_sheet_pdf', 'year': year})
+    return _pdf_response(f'statement-of-financial-position-{year}.pdf',
+                         build_balance_sheet_pdf(current_user.organization, data, year))
+
+
+@reports_bp.route('/income-statement.pdf')
+@login_required
+def income_statement_pdf():
+    from services.financial_reports_pdf import build_income_statement_pdf
+    year = _pdf_year()
+    reports = FinancialReports(db.session, current_user.organization_id)
+    data = reports.income_statement(f'{year}-01-01', f'{year}-12-31')
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'income_statement_pdf', 'year': year})
+    return _pdf_response(f'statement-of-activities-{year}.pdf',
+                         build_income_statement_pdf(current_user.organization, data, year))
+
+
+@reports_bp.route('/cash-flow.pdf')
+@login_required
+def cash_flow_pdf():
+    from services.financial_reports_pdf import build_cash_flow_pdf
+    year = _pdf_year()
+    reports = FinancialReports(db.session, current_user.organization_id)
+    data = reports.cash_flow_statement(f'{year}-01-01', f'{year}-12-31')
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'cash_flow_pdf', 'year': year})
+    return _pdf_response(f'statement-of-cash-flows-{year}.pdf',
+                         build_cash_flow_pdf(current_user.organization, data, year))
+
+
+@reports_bp.route('/functional-expenses.pdf')
+@login_required
+def functional_expenses_pdf():
+    from services.financial_reports_pdf import build_functional_expenses_pdf
+    year = _pdf_year()
+    reports = FinancialReports(db.session, current_user.organization_id)
+    data = reports.functional_expenses(f'{year}-01-01', f'{year}-12-31')
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'functional_expenses_pdf', 'year': year})
+    return _pdf_response(f'statement-of-functional-expenses-{year}.pdf',
+                         build_functional_expenses_pdf(current_user.organization, data, year))

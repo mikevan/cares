@@ -311,6 +311,113 @@ def schedule_a(org_id, period_start, period_end):
     }
 
 
+# Cash-disbursement categorisation for Schedule B's Treasurer section.
+# Paying down a per-capita PAYABLE is per capita paid in cash just as much
+# as expensing it directly, so both the expense and the liability account
+# map to the same line.
+_SAVINGS_TRANSFER_ACCOUNTS = {_SAVINGS_ACCOUNT}
+_INVESTMENT_ACCOUNTS = {_MONEY_MARKET_ACCOUNT, _CDS_ACCOUNT, _MUTUAL_FUNDS_ACCOUNT}
+_PER_CAPITA_SUPREME_CASH_ACCOUNTS = {_PER_CAPITA_SUPREME_EXPENSE, _PER_CAPITA_SUPREME_LIABILITY}
+_PER_CAPITA_STATE_CASH_ACCOUNTS = {_PER_CAPITA_STATE_EXPENSE, _PER_CAPITA_STATE_LIABILITY}
+
+
+def _checking_disbursements_by_category(org_id, start, end):
+    """Every dollar that actually LEFT checking in the period, split into
+    the Treasurer's disbursement lines.
+
+    Form 1295's Treasurer section is a CASH statement. A trustee verifies
+    it by confirming that opening balance plus receipts minus
+    disbursements equals the closing balance. That only holds if the
+    disbursement lines are cash.
+
+    These lines used to be computed from expense-account DEBITS, which is
+    accrual, and broke the footing three different ways -- silently, since
+    nothing checked:
+
+      - an expense accrued but not paid before period end (per capita
+        payable, an unpaid utility bill) was reported as disbursed
+        although no cash moved;
+      - a non-cash expense (depreciation) was reported as disbursed;
+      - cash spent on something that is not an expense account (buying a
+        CD or a mutual fund) appeared on no line at all.
+
+    So categories come from the other side of each entry that credits
+    checking, with the cash split across that entry's debit lines in
+    proportion to their amounts -- exact for an ordinary two-line entry,
+    and correct in general for a compound one.
+
+    Transfers to savings are deliberately NOT bucketed here: they keep
+    their existing net-of-both-directions treatment on the schedule, and
+    the same netting is applied to the receipts side, so the two remain
+    consistent with each other.
+    """
+    buckets = {
+        'per_capita_supreme_council': Decimal('0'),
+        'per_capita_state_council': Decimal('0'),
+        'charitable_donations': Decimal('0'),
+        'transfers_to_investments': Decimal('0'),
+        'general_council_expenses': Decimal('0'),
+    }
+    checking = _account(_CHECKING_ACCOUNT)
+    if not checking:
+        return buckets
+
+    credited = db.session.query(
+        JournalEntryLine.journal_entry_id,
+        func.sum(JournalEntryLine.credit_amount),
+    ).join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id).join(
+        Project, Project.id == JournalEntry.project_id
+    ).filter(
+        JournalEntryLine.account_id == checking.id,
+        JournalEntry.entry_date >= start,
+        JournalEntry.entry_date <= end,
+        JournalEntry.status == 'Posted',
+        Project.organization_id == org_id,
+    ).group_by(JournalEntryLine.journal_entry_id).all()
+
+    entry_cash_out = {eid: amount for eid, amount in credited if amount}
+    if not entry_cash_out:
+        return buckets
+
+    debit_rows = db.session.query(
+        JournalEntryLine.journal_entry_id,
+        ChartOfAccounts.account_number,
+        JournalEntryLine.debit_amount,
+    ).join(ChartOfAccounts, ChartOfAccounts.id == JournalEntryLine.account_id).filter(
+        JournalEntryLine.journal_entry_id.in_(list(entry_cash_out)),
+        JournalEntryLine.debit_amount > 0,
+    ).all()
+
+    legs_by_entry = {}
+    for entry_id, account_number, amount in debit_rows:
+        legs_by_entry.setdefault(entry_id, []).append((account_number, amount or Decimal('0')))
+
+    for entry_id, cash_out in entry_cash_out.items():
+        legs = legs_by_entry.get(entry_id, [])
+        total_debits = sum((amount for _, amount in legs), Decimal('0'))
+        if total_debits <= 0:
+            # Cash left with nothing on the other side to classify it by.
+            # Report it rather than drop it -- dropping it would break the
+            # footing, which is the failure this function exists to end.
+            buckets['general_council_expenses'] += cash_out
+            continue
+        for account_number, amount in legs:
+            share = cash_out * (amount / total_debits)
+            if account_number in _SAVINGS_TRANSFER_ACCOUNTS:
+                continue  # its own line, netted -- see schedule_b
+            if account_number in _PER_CAPITA_SUPREME_CASH_ACCOUNTS:
+                buckets['per_capita_supreme_council'] += share
+            elif account_number in _PER_CAPITA_STATE_CASH_ACCOUNTS:
+                buckets['per_capita_state_council'] += share
+            elif account_number == _CHARITABLE_GIVING_EXPENSE:
+                buckets['charitable_donations'] += share
+            elif account_number in _INVESTMENT_ACCOUNTS:
+                buckets['transfers_to_investments'] += share
+            else:
+                buckets['general_council_expenses'] += share
+
+    return {k: v.quantize(Decimal('0.01')) for k, v in buckets.items()}
+
 def schedule_b(org_id, period_start, period_end):
     """Cash Transactions -- Financial Secretary side and Treasurer side,
     per Form 1295's Schedule B. See the module docstring for the
@@ -377,25 +484,29 @@ def schedule_b(org_id, period_start, period_end):
         Decimal('0'),
     )
 
-    per_capita_supreme = _period_side_total(org_id, _PER_CAPITA_SUPREME_EXPENSE, period_start, period_end, 'debit')
-    per_capita_state = _period_side_total(org_id, _PER_CAPITA_STATE_EXPENSE, period_start, period_end, 'debit')
-    charitable_giving = _period_side_total(org_id, _CHARITABLE_GIVING_EXPENSE, period_start, period_end, 'debit')
+    # Cash that actually left checking, categorised by what it bought --
+    # not expense-account debits. See _checking_disbursements_by_category
+    # for the three ways the old accrual-based version failed to foot.
+    disbursed = _checking_disbursements_by_category(org_id, period_start, period_end)
+    per_capita_supreme = disbursed['per_capita_supreme_council']
+    per_capita_state = disbursed['per_capita_state_council']
+    charitable_giving = disbursed['charitable_donations']
+    general_council_expenses = disbursed['general_council_expenses']
+    transfers_to_investments = disbursed['transfers_to_investments']
 
-    excluded_expense_numbers = {_PER_CAPITA_SUPREME_EXPENSE, _PER_CAPITA_STATE_EXPENSE, _CHARITABLE_GIVING_EXPENSE}
-    excluded_expense_ids = [a.id for a in ChartOfAccounts.query.filter(
-        ChartOfAccounts.account_number.in_(excluded_expense_numbers)
-    ).all()]
-    general_expense_account_ids = [a.id for a in ChartOfAccounts.query.filter_by(account_type='Expense').all()
-                                    if a.id not in excluded_expense_ids]
-    general_council_expenses = Decimal('0')
-    if general_expense_account_ids:
-        general_council_expenses = db.session.query(func.sum(JournalEntryLine.debit_amount)).join(JournalEntry).join(Project).filter(
-            JournalEntryLine.account_id.in_(general_expense_account_ids),
-            JournalEntry.entry_date >= period_start,
-            JournalEntry.entry_date <= period_end,
-            JournalEntry.status == 'Posted',
-            Project.organization_id == org_id,
-        ).scalar() or Decimal('0')
+    total_receipts = transferred_to_treasurer + transfers_from_savings + checking_interest_received
+    total_disbursements = (
+        per_capita_supreme + per_capita_state + charitable_giving
+        + general_council_expenses + transfers_to_investments + transfers_to_savings
+    )
+    # A trustee checks this section by confirming opening + receipts -
+    # disbursements = closing. Do the same check here and report the
+    # result, so any discrepancy is stated on the document instead of
+    # waiting to be found with a calculator -- or not found.
+    expected_closing = checking_opening + total_receipts - total_disbursements
+    unreconciled_difference = checking_closing - expected_closing
+
+
 
     return {
         'period_start': period_start,
@@ -418,8 +529,13 @@ def schedule_b(org_id, period_start, period_end):
             'per_capita_state_council': per_capita_state,
             'general_council_expenses': general_council_expenses,
             'transfers_to_savings': transfers_to_savings,
+            'transfers_to_investments': transfers_to_investments,
             'charitable_donations': charitable_giving,
+            'total_receipts': total_receipts,
+            'total_disbursements': total_disbursements,
             'closing_balance': checking_closing,
+            'reconciles': abs(unreconciled_difference) < Decimal('0.01'),
+            'unreconciled_difference': unreconciled_difference,
         },
         'note': (
             "Checking balances above are this system's book balance as of each "
@@ -461,7 +577,18 @@ def schedule_c(org_id, as_of_date):
         ChartOfAccounts.active == True,
         ChartOfAccounts.id.notin_(named_asset_ids),
     ).all()
-    other_assets = sum((_balance_as_of(org_id, a.account_number, as_of_date) for a in other_asset_accounts), Decimal('0'))
+    # _balance_as_of signs by each account's OWN normal balance, so a
+    # contra-asset -- 1590 Accumulated Depreciation, whose account_type is
+    # 'Asset' with a Credit normal balance -- comes back POSITIVE, meaning
+    # "this much depreciation has accumulated". Adding that to assets
+    # overstates Total Assets and Total Net Assets by twice its balance.
+    # Negate it so it reduces assets, which is what a contra account does.
+    # Same convention as services/reports.py::balance_sheet_detailed(),
+    # where this exact defect was found and fixed once already.
+    other_assets = Decimal('0')
+    for a in other_asset_accounts:
+        balance = _balance_as_of(org_id, a.account_number, as_of_date)
+        other_assets += -balance if 'contra' in (a.account_subtype or '').lower() else balance
 
     total_long_term_assets = cds + mutual_funds + other_assets
     total_assets = total_current_assets + total_long_term_assets
@@ -478,7 +605,11 @@ def schedule_c(org_id, as_of_date):
         ChartOfAccounts.active == True,
         ChartOfAccounts.id.notin_(named_liability_ids),
     ).all()
-    other_liabilities = sum((_balance_as_of(org_id, a.account_number, as_of_date) for a in other_liability_accounts), Decimal('0'))
+    # Same contra handling, in case a contra-liability is ever added.
+    other_liabilities = Decimal('0')
+    for a in other_liability_accounts:
+        balance = _balance_as_of(org_id, a.account_number, as_of_date)
+        other_liabilities += -balance if 'contra' in (a.account_subtype or '').lower() else balance
 
     total_liabilities = per_capita_supreme_payable + per_capita_state_payable + other_liabilities
 

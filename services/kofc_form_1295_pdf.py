@@ -54,15 +54,13 @@ def _money(value):
 
 
 def _header(story, styles, org, title, subtitle):
-    org_name = org.name if org else 'Council'
-    council_number = getattr(org, 'council_number', None) if org else None
-    if council_number:
-        org_name = f"{org_name} (Council #{council_number})"
-    story.append(Paragraph(org_name, styles[_HEADER_STYLE_NAME]))
-    story.append(Paragraph(title, styles[_SUBHEADER_STYLE_NAME]))
-    if subtitle:
-        story.append(Paragraph(subtitle, styles[_BODY_STYLE_NAME]))
-    story.append(Spacer(1, 0.25 * inch))
+    """Council emblem, name, number and District Deputy, over the blue and
+    gold rule -- the same masthead the Trustee Audit Report uses, from
+    services/pdf_branding.py. These schedules go to Supreme and the state
+    office over a council's name; they should look like the council's own
+    document, not like a generic export."""
+    from services import pdf_branding as brand
+    brand.masthead(story, brand.styles(), org, title, subtitle)
 
 
 def _attestation_footer(story, styles, org, submission):
@@ -93,19 +91,22 @@ def _attestation_footer(story, styles, org, submission):
     ))
 
 
-def _build(story_builder):
+_REPORT_TITLE = 'Knights of Columbus Form 1295'
+
+
+def _build(story_builder, org=None):
+    """Render through services/pdf_branding.py so these schedules carry the
+    same masthead, running header, gold rule and 'Page X of Y' as every
+    other document this application produces."""
+    from services import pdf_branding as brand
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter,
-                             topMargin=0.75 * inch, bottomMargin=0.75 * inch)
-    styles = getSampleStyleSheet()
+    styles = brand.styles()
     story = []
     story_builder(story, styles)
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
+    return brand.build(buffer, story, org, _REPORT_TITLE)
 
 
-def build_schedule_a_pdf(org, data, submission=None):
+def build_schedule_a_pdf(org, data, submission=None, _story_only=False):
     def _story(story, styles):
         _header(story, styles, org, 'Form 1295 -- Schedule A: Membership',
                 f"Period: {data['period_start']} to {data['period_end']}")
@@ -146,10 +147,12 @@ def build_schedule_a_pdf(org, data, submission=None):
             styles[_BODY_STYLE_NAME],
         ))
         _attestation_footer(story, styles, org, submission)
-    return _build(_story)
+    if _story_only:
+        return _story
+    return _build(_story, org)
 
 
-def build_schedule_b_pdf(org, data, submission=None):
+def build_schedule_b_pdf(org, data, submission=None, _story_only=False):
     def _story(story, styles):
         _header(story, styles, org, 'Form 1295 -- Schedule B: Cash Transactions',
                 f"Period: {data['period_start']} to {data['period_end']}")
@@ -179,6 +182,15 @@ def build_schedule_b_pdf(org, data, submission=None):
         story.append(Spacer(1, 0.25 * inch))
 
         tr = data['treasurer']
+        if not tr.get('reconciles', True):
+            story.append(Paragraph(
+                "<b>DOES NOT RECONCILE.</b> Opening balance plus receipts minus "
+                "disbursements does not equal the closing balance shown below; the "
+                "difference is " + _money(tr['unreconciled_difference']) + ". This "
+                "schedule should not be filed until that difference is explained.",
+                styles[_BODY_STYLE_NAME],
+            ))
+            story.append(Spacer(1, 8))
         story.append(Paragraph('Treasurer (Checking Account)', styles[_SUBHEADER_STYLE_NAME]))
         tr_rows = [
             ['', ''],
@@ -191,16 +203,21 @@ def build_schedule_b_pdf(org, data, submission=None):
             ['General council expenses', f"({_money(tr['general_council_expenses'])})"],
             ['Transfers to savings', f"({_money(tr['transfers_to_savings'])})"],
             ['Charitable donations', f"({_money(tr['charitable_donations'])})"],
+            ['Transfers to investments', f"({_money(tr['transfers_to_investments'])})"],
+            ['Total receipts', _money(tr['total_receipts'])],
+            ['Total disbursements', f"({_money(tr['total_disbursements'])})"],
             ['Closing balance', _money(tr['closing_balance'])],
         ]
         story.append(Table(tr_rows, colWidths=[4 * inch, 2 * inch], style=_TABLE_STYLE))
         story.append(Spacer(1, 0.2 * inch))
         story.append(Paragraph(data['note'], styles[_BODY_STYLE_NAME]))
         _attestation_footer(story, styles, org, submission)
-    return _build(_story)
+    if _story_only:
+        return _story
+    return _build(_story, org)
 
 
-def build_schedule_c_pdf(org, data, submission=None):
+def build_schedule_c_pdf(org, data, submission=None, _story_only=False):
     def _story(story, styles):
         _header(story, styles, org, 'Form 1295 -- Schedule C: Financial Position',
                 f"As of {data['as_of_date']}")
@@ -268,4 +285,30 @@ def build_schedule_c_pdf(org, data, submission=None):
             colWidths=[4 * inch, 2 * inch], style=_TABLE_STYLE,
         ))
         _attestation_footer(story, styles, org, submission)
-    return _build(_story)
+    if _story_only:
+        return _story
+    return _build(_story, org)
+
+def build_all_schedules_pdf(org, schedule_a, schedule_b, schedule_c, submission=None):
+    """Schedules A, B and C as one document.
+
+    The Form 1295 page offers a single download for the whole filing as
+    well as the three individual schedules, because that is how a council
+    actually hands it over -- a trustee does not want three separate PDFs
+    to staple together. Each schedule keeps its own masthead and starts a
+    new page, matching the paper form's structure.
+    """
+    from reportlab.platypus import PageBreak
+    parts = [
+        build_schedule_a_pdf(org, schedule_a, submission, _story_only=True),
+        build_schedule_b_pdf(org, schedule_b, submission, _story_only=True),
+        build_schedule_c_pdf(org, schedule_c, submission, _story_only=True),
+    ]
+
+    def _story(story, styles):
+        for i, part in enumerate(parts):
+            if i:
+                story.append(PageBreak())
+            part(story, styles)
+
+    return _build(_story, org)

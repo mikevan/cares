@@ -6,6 +6,7 @@ Demo behavior: org settings preserved, admin user reset fresh every run.
 """
 
 from app import app, db
+from demo_guard import demo_reset_allowed, demo_reset_refusal_message
 from models import ChartOfAccounts, JournalEntry, JournalEntryLine, Project, ProjectAssignment, Member, MembershipEvent
 from datetime import datetime
 from sqlalchemy import inspect, text
@@ -267,6 +268,13 @@ def reset_admin_user():
         raise RuntimeError("No organization found — cannot create admin user")
 
     admin = User.query.filter_by(username='admin').first()
+    if admin and not demo_reset_allowed():
+        # Creating a missing admin is provisioning; overwriting an existing
+        # admin's password is a reset. On a live deployment the second one
+        # silently replaces the council's chosen credentials with a default
+        # published in a public repository, on every deploy.
+        print(demo_reset_refusal_message("reset the existing admin user's password"))
+        return
     if admin:
         admin.email = 'admin@example.com'
         admin.role = 'Admin'

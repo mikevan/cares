@@ -35,6 +35,7 @@ from models import Organization, User, Project, Member, JournalEntry, JournalEnt
 from datetime import date
 from decimal import Decimal
 from sqlalchemy import text
+from demo_guard import demo_reset_allowed, demo_reset_refusal_message
 
 # ==================== ACCOUNT CACHE ====================
 
@@ -1056,7 +1057,17 @@ def main(target_app):
         if not user:
             raise RuntimeError("No admin user found. Run migrate_production.py first.")
 
-        # Always wipe and reload — this is a demo system
+        # Destructive from here down: clear_existing_data() deletes this
+        # organization's journal entries, members, projects, donations and
+        # invoices. On a production deployment that is a council's real
+        # books, not demo fiction, so the guard decides -- see demo_guard.
+        if not demo_reset_allowed():
+            print(demo_reset_refusal_message('wipe and reload demo data'))
+            print("  Schema migrations have already been applied. The existing")
+            print("  data is untouched and the application can start normally.")
+            return
+
+        # Demo system: always wipe and reload.
         clear_existing_data()
 
         # Reload accounts cache after clear (chart_of_accounts was preserved)

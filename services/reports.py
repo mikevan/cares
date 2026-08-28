@@ -114,6 +114,63 @@ class FinancialReports:
             'total_liabilities_and_net_assets': total_liabilities + total_net_assets
         }
     
+    def _get_cumulative_net_income(self, as_of_date):
+        """
+        Net income (revenue minus expenses) for ALL posted activity from
+        inception through as_of_date -- not just a single fiscal period.
+
+        This system never closes Revenue/Expense accounts into Net Assets at
+        year end, so their balances keep accumulating across fiscal years.
+        balance_sheet_detailed() uses this to add that running, unclosed P&L
+        into its Net Assets total, which is what keeps Assets = Liabilities
+        + Net Assets true at any as_of_date, not just on the very first day
+        of the books.
+        """
+        if isinstance(as_of_date, str):
+            as_of_date = datetime.strptime(as_of_date, '%Y-%m-%d').date()
+
+        revenue_credits = self.session.query(func.sum(JournalEntryLine.credit_amount))\
+            .join(JournalEntry).join(Project).join(
+                ChartOfAccounts, JournalEntryLine.account_id == ChartOfAccounts.id
+            ).filter(
+                ChartOfAccounts.account_type == 'Revenue',
+                JournalEntry.entry_date <= as_of_date,
+                JournalEntry.status == 'Posted',
+                Project.organization_id == self.org_id
+            ).scalar() or Decimal('0')
+        revenue_debits = self.session.query(func.sum(JournalEntryLine.debit_amount))\
+            .join(JournalEntry).join(Project).join(
+                ChartOfAccounts, JournalEntryLine.account_id == ChartOfAccounts.id
+            ).filter(
+                ChartOfAccounts.account_type == 'Revenue',
+                JournalEntry.entry_date <= as_of_date,
+                JournalEntry.status == 'Posted',
+                Project.organization_id == self.org_id
+            ).scalar() or Decimal('0')
+        total_revenue = revenue_credits - revenue_debits
+
+        expense_debits = self.session.query(func.sum(JournalEntryLine.debit_amount))\
+            .join(JournalEntry).join(Project).join(
+                ChartOfAccounts, JournalEntryLine.account_id == ChartOfAccounts.id
+            ).filter(
+                ChartOfAccounts.account_type == 'Expense',
+                JournalEntry.entry_date <= as_of_date,
+                JournalEntry.status == 'Posted',
+                Project.organization_id == self.org_id
+            ).scalar() or Decimal('0')
+        expense_credits = self.session.query(func.sum(JournalEntryLine.credit_amount))\
+            .join(JournalEntry).join(Project).join(
+                ChartOfAccounts, JournalEntryLine.account_id == ChartOfAccounts.id
+            ).filter(
+                ChartOfAccounts.account_type == 'Expense',
+                JournalEntry.entry_date <= as_of_date,
+                JournalEntry.status == 'Posted',
+                Project.organization_id == self.org_id
+            ).scalar() or Decimal('0')
+        total_expenses = expense_debits - expense_credits
+
+        return total_revenue - total_expenses
+
     def balance_sheet_detailed(self, as_of_date=None):
         """Generate detailed Statement of Financial Position (Balance Sheet) for IRS compliance"""
         if as_of_date is None:
@@ -145,10 +202,17 @@ class FinancialReports:
             balance = self.get_account_balance(account.account_number, as_of_date)
             if balance != 0:
                 subtype = account.account_subtype or 'Other Assets'
+                # get_account_balance() returns the balance in the account's
+                # own normal-balance direction, so a contra-asset (e.g. 1590
+                # Accumulated Depreciation, normal_balance=Credit) comes back
+                # as a positive credit balance. Left as-is, it would be added
+                # to total assets instead of reducing them. Negate it here so
+                # it subtracts, matching how a contra account actually works.
+                signed_balance = -balance if 'contra' in subtype.lower() else balance
                 assets_grouped[subtype].append({
                     'number': account.account_number,
                     'name': account.account_name,
-                    'balance': float(balance)
+                    'balance': float(signed_balance)
                 })
         
         # Calculate asset subtotals
@@ -162,10 +226,13 @@ class FinancialReports:
             balance = self.get_account_balance(account.account_number, as_of_date)
             if balance != 0:
                 subtype = account.account_subtype or 'Other Liabilities'
+                # Same contra-account handling as assets above, in case a
+                # contra-liability account is ever added to the chart.
+                signed_balance = -balance if 'contra' in subtype.lower() else balance
                 liabilities_grouped[subtype].append({
                     'number': account.account_number,
                     'name': account.account_name,
-                    'balance': float(balance)
+                    'balance': float(signed_balance)
                 })
         
         # Calculate liability subtotals
@@ -179,18 +246,38 @@ class FinancialReports:
             balance = self.get_account_balance(account.account_number, as_of_date)
             if balance != 0:
                 subtype = account.account_subtype or 'Unrestricted Net Assets'
+                # Same contra-account handling as assets above.
+                signed_balance = -balance if 'contra' in subtype.lower() else balance
                 net_assets_grouped[subtype].append({
                     'number': account.account_number,
                     'name': account.account_name,
-                    'balance': float(balance)
+                    'balance': float(signed_balance)
                 })
         
         # Calculate net asset subtotals
         net_asset_subtotals = {subtype: sum(acc['balance'] for acc in accts) 
                               for subtype, accts in net_assets_grouped.items()}
+
+        # This system has no periodic closing-entry step -- Revenue and
+        # Expense accounts accumulate indefinitely instead of being closed
+        # into a 3xxx Net Asset account at year end. For Assets = Liabilities
+        # + Net Assets to hold at any point in time, the balance sheet has to
+        # fold in net income earned (or lost) from inception through
+        # as_of_date that hasn't been closed into a recorded 3xxx balance yet.
+        cumulative_net_income = self._get_cumulative_net_income(as_of_date)
+        if cumulative_net_income != 0:
+            net_assets_grouped['Current Year Activity'].append({
+                'number': 'YTD',
+                'name': 'Net Income (Unclosed, Inception-to-Date)',
+                'balance': float(cumulative_net_income)
+            })
+            net_asset_subtotals['Current Year Activity'] = \
+                net_asset_subtotals.get('Current Year Activity', 0) + float(cumulative_net_income)
+
         total_net_assets = sum(net_asset_subtotals.values())
         
-        # If no net assets recorded, calculate as difference
+        # If no net assets recorded at all (a brand new org with no opening
+        # balance entry), fall back to the accounting identity directly.
         if total_net_assets == 0:
             total_net_assets = total_assets - total_liabilities
         

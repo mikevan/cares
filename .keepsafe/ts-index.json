@@ -1,0 +1,24 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint_id": "0001-quick-20260827-151412",
+      "sequence": 1,
+      "name": "quick-20260827-151412",
+      "created_at": "2026-08-27T20:14:12Z",
+      "kind": "snapshot",
+      "file_count": 122,
+      "changed_count": 122,
+      "base_checkpoint_id": null
+    },
+    {
+      "checkpoint_id": "0002-quick-20260827-183515",
+      "sequence": 2,
+      "name": "quick-20260827-183515",
+      "created_at": "2026-08-27T23:35:15Z",
+      "kind": "delta",
+      "file_count": 128,
+      "changed_count": 18,
+      "base_checkpoint_id": "0001-quick-20260827-151412"
+    }
+  ]
+}

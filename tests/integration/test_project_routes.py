@@ -199,28 +199,40 @@ class TestProjectVolunteers:
         db_session.refresh(project)
         assert member in project.volunteers
     
-    def test_remove_volunteer_from_project(self, admin_client, organization, db_session):
-        """Test removing a volunteer from a project."""
+    def test_end_volunteer_assignment(self, admin_client, organization, db_session):
+        """Test ending a volunteer's assignment on a project.
+
+        There is no longer a bare "remove" -- ending an assignment always
+        records why (see PROJECT_ASSIGNMENT_END_REASONS), via
+        services/project_service.py.
+        """
         from tests.fixtures.factories import ProjectFactory, MemberFactory
-        
+        from services.project_service import assign_member
+
         project = ProjectFactory(organization=organization)
         member = MemberFactory(organization=organization)
-        
-        # Add volunteer
-        project.volunteers.append(member)
         db_session.commit()
-        
-        # Remove volunteer
+
+        assignment = assign_member(project, member, role='Volunteer')
+        db_session.commit()
+        assert member in project.volunteers
+
+        # End the assignment
         response = admin_client.post(
-            f'/projects/{project.id}/volunteers/{member.id}/remove',
+            f'/projects/{project.id}/assignments/{assignment.id}/end',
+            data={'end_reason': 'Resigned', 'end_notes': 'Moved out of the area'},
             follow_redirects=True
         )
-        
+
         assert response.status_code == 200
-        
-        # Verify removal
+
+        # Verify removal from the "current" computed list, and that the
+        # history row itself records why.
         db_session.refresh(project)
         assert member not in project.volunteers
+        db_session.refresh(assignment)
+        assert assignment.end_reason == 'Resigned'
+        assert assignment.end_date is not None
     
     def test_assign_project_leader(self, admin_client, organization, db_session):
         """Test assigning a project leader."""

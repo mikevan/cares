@@ -12,7 +12,11 @@ from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify
 from flask_login import login_required, current_user
 
-from models import db, Member, MemberDuesPayment, Organization, Project, ChartOfAccounts, JournalEntry, JournalEntryLine
+from models import (
+    db, Member, MemberDuesPayment, Organization, Project, ChartOfAccounts,
+    JournalEntry, JournalEntryLine, MembershipEvent, MEMBERSHIP_EVENT_TYPES,
+    MEMBERSHIP_EVENT_ADDITION_TYPES, MEMBERSHIP_EVENT_DEDUCTION_TYPES,
+)
 
 # Create the blueprint
 members_bp = Blueprint('members', __name__, url_prefix='/members')
@@ -73,6 +77,14 @@ def new():
                 organization_id=current_user.organization_id
             )
             db.session.add(member)
+            db.session.flush()
+            db.session.add(MembershipEvent(
+                member_id=member.id,
+                organization_id=current_user.organization_id,
+                event_type='Initiation',
+                event_date=member.join_date or date.today(),
+                notes='Logged automatically when the member record was created.',
+            ))
             db.session.commit()
             flash('Member added successfully!', 'success')
             return redirect(url_for('members.list'))
@@ -104,7 +116,24 @@ def edit(id):
             member.zip_code = request.form.get('zip')
             if request.form.get('join_date'):
                 member.join_date = datetime.strptime(request.form.get('join_date'), '%Y-%m-%d').date()
+            was_active = member.active
             member.active = request.form.get('active') == 'on'
+
+            if member.active != was_active:
+                event_type = request.form.get('membership_event_type')
+                if event_type in MEMBERSHIP_EVENT_TYPES:
+                    event_date_raw = request.form.get('membership_event_date')
+                    event_date = (
+                        datetime.strptime(event_date_raw, '%Y-%m-%d').date()
+                        if event_date_raw else date.today()
+                    )
+                    db.session.add(MembershipEvent(
+                        member_id=member.id,
+                        organization_id=current_user.organization_id,
+                        event_type=event_type,
+                        event_date=event_date,
+                        notes=request.form.get('membership_event_notes'),
+                    ))
 
             db.session.commit()
             flash('Member updated successfully!', 'success')
@@ -113,7 +142,12 @@ def edit(id):
             flash(f'Error updating member: {str(e)}', 'error')
             db.session.rollback()
 
-    return render_template('member_form.html', member=member)
+    return render_template(
+        'member_form.html',
+        member=member,
+        membership_event_addition_types=MEMBERSHIP_EVENT_ADDITION_TYPES,
+        membership_event_deduction_types=MEMBERSHIP_EVENT_DEDUCTION_TYPES,
+    )
 
 
 @members_bp.route('/<int:id>/delete', methods=['POST'])

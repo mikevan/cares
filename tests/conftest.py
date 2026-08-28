@@ -167,6 +167,7 @@ def app(postgres_container):
     from blueprints.report_routes import reports_bp
     from blueprints.settings_routes import settings_bp
     from blueprints.ap_routes import ap_bp
+    from blueprints.audit_routes import audit_bp
     
     # Create Flask app
     app = Flask(__name__, 
@@ -185,6 +186,13 @@ def app(postgres_container):
         'SERVER_NAME': 'localhost:5000',
         'APP_NAME': 'CARES Test',
         'DEFAULT_ORGANIZATION': 'Test Council',
+        # Rate limiting is on by default, mirroring production. Flask-Limiter
+        # fixes enabled/disabled at limiter.init_app() time (it does not
+        # re-read this setting per-request), so toggling it after startup in
+        # an individual test has no effect. The autouse reset_rate_limiter
+        # fixture below clears counters between tests so the shared 127.0.0.1
+        # test-client address doesn't accumulate a quota across the suite.
+        'RATELIMIT_ENABLED': True,
     })
     
     # Initialize database
@@ -203,7 +211,49 @@ def app(postgres_container):
             joinedload(User.organization)
         ).filter_by(id=int(user_id)).first()
         return user
-    
+
+    # Mirror app.py's CSRFProtect wiring so tests exercise the same
+    # protection production uses. WTF_CSRF_ENABLED=False above makes this a
+    # no-op for every existing test; test_csrf_protection.py flips that
+    # config on for the duration of its own tests only.
+    from flask_wtf import CSRFProtect
+    CSRFProtect(app)
+
+    # Mirror app.py's rate limiter wiring. RATELIMIT_ENABLED=True above, so
+    # @limiter.limit(...) on the login route is live for the whole suite;
+    # the autouse reset_rate_limiter fixture below clears counters between
+    # tests.
+    from extensions import limiter
+    limiter.init_app(app)
+
+    # Mirror app.py's forced-password-change redirect so tests exercise the
+    # same behavior production uses.
+    from flask import request, redirect, url_for, flash
+    from flask_login import current_user
+
+    @app.before_request
+    def require_password_change():
+        if not current_user.is_authenticated:
+            return None
+        if not getattr(current_user, 'must_change_password', False):
+            return None
+        if request.endpoint in {'users.change_password', 'auth.logout', 'static'}:
+            return None
+        flash('Please choose a new password before continuing.', 'warning')
+        return redirect(url_for('users.change_password', id=current_user.id))
+
+    # Mirror app.py's audit-trail actor-context hooks so tests exercise the
+    # same attribution production uses -- see services/audit_context.py.
+    from services.audit_context import set_current_actor, clear_current_actor
+
+    @app.before_request
+    def apply_audit_actor():
+        set_current_actor(current_user.id if current_user.is_authenticated else None)
+
+    @app.teardown_request
+    def clear_audit_actor(exc=None):
+        clear_current_actor()
+
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(members_bp)
@@ -214,6 +264,7 @@ def app(postgres_container):
     app.register_blueprint(reports_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(ap_bp)
+    app.register_blueprint(audit_bp)
 
     @app.route('/')
     def index():
@@ -231,10 +282,43 @@ def app(postgres_container):
             init_database(app)
             print(f"✓ Chart of Accounts initialized ({ChartOfAccounts.query.count()} accounts)")
 
-        # Load comprehensive sample data for all tests
+        # A handful of tests (test_transaction_routes.py) and the shared
+        # JournalEntryFactory (tests/fixtures/factories.py) look up generic
+        # bucket accounts -- '1000' Cash, '2000' Accounts Payable, '3000'
+        # Net Assets, '4000' Revenue, '5000' Expense -- rather than a real
+        # account number like '1010' or '4010'. Those bucket accounts used
+        # to live permanently in init_database()'s own seed list (comments
+        # there literally said "add 1000 for tests"), which meant every
+        # fresh production/dev deployment got them too. They're test-only
+        # convenience, so they're added here instead, only for the test
+        # database, and only if a test still references them.
+        legacy_test_only_accounts = [
+            ('1000', 'Cash', 'Asset', 'Cash', 'Debit'),
+            ('2000', 'Accounts Payable', 'Liability', 'Current Liability', 'Credit'),
+            ('3000', 'Net Assets', 'Net Assets', 'Unrestricted', 'Credit'),
+            ('4000', 'Revenue', 'Revenue', 'Contributions', 'Credit'),
+            ('5000', 'Expense', 'Expense', 'General', 'Debit'),
+        ]
+        for acc_number, acc_name, acc_type, acc_subtype, normal_balance in legacy_test_only_accounts:
+            if not ChartOfAccounts.query.filter_by(account_number=acc_number).first():
+                db.session.add(ChartOfAccounts(
+                    account_number=acc_number,
+                    account_name=acc_name,
+                    account_type=acc_type,
+                    account_subtype=acc_subtype,
+                    normal_balance=normal_balance,
+                ))
+        db.session.commit()
+
+        # Load comprehensive sample data for all tests. target_app is a
+        # required (no-default) parameter on main() specifically so this
+        # call site can't silently drift back to the real app.py app --
+        # that used to happen implicitly and would bind these destructive
+        # queries to the real DATABASE_URL (a developer's real local
+        # Postgres) instead of this disposable test container.
         with app.app_context():
             import load_comprehensive_data
-            load_comprehensive_data.main()
+            load_comprehensive_data.main(target_app=app)
             print(f"✓ Comprehensive sample data loaded (Journal Entries: {JournalEntry.query.count()})")
 
         # --- SESSION UNIFICATION PATCH ---
@@ -264,6 +348,26 @@ def app(postgres_container):
 # =============================================================================
 
 import pytest
+
+
+@pytest.fixture(autouse=True, scope='function')
+def reset_rate_limiter():
+    """
+    Clear Flask-Limiter's counters before every test.
+
+    RATELIMIT_ENABLED=True is set on the shared session-scoped app, so the
+    login rate limit (and any other @limiter.limit(...) routes) is live for
+    the whole suite. Without a reset, requests from earlier tests (which all
+    share 127.0.0.1 as the Werkzeug test client's remote address) would
+    accumulate against the same quota and could trip a 429 in an unrelated
+    test.
+    """
+    from extensions import limiter
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
 @pytest.fixture(autouse=True, scope='function')
 def enforce_test_session(db_session):
     """

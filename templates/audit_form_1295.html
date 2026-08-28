@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Form 1295 Schedules{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Form 1295 Schedules</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+</div>
+
+<div class="alert alert-secondary">
+    Schedules A, B, and C below are calculated directly from your books for the period selected --
+    see each schedule's own notes for exactly what's computed and what this system can't yet
+    distinguish (marked "Not tracked"). This isn't a replacement for the
+    <a href="{{ url_for('audit.log') }}">Trustee Audit Report</a>'s tamper-evident change log --
+    that's the evidence underneath these numbers. Review every figure against your own records
+    before signing and filing Form 1295; this tool is meant to save the trustees a week of pulling
+    paper, not to replace their judgment.
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" action="{{ url_for('audit.form_1295') }}" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label for="period_start" class="form-label mb-0">Period start</label>
+                <input type="date" class="form-control form-control-sm" id="period_start" name="period_start" value="{{ period_start }}">
+            </div>
+            <div class="col-auto">
+                <label for="period_end" class="form-label mb-0">Period end</label>
+                <input type="date" class="form-control form-control-sm" id="period_end" name="period_end" value="{{ period_end }}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Schedule A -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Schedule A -- Membership</strong>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('audit.form_1295_schedule_a_pdf', period_start=period_start, period_end=period_end) }}" target="_blank">
+            <i class="bi bi-file-earmark-pdf"></i> Download PDF
+        </a>
+    </div>
+    <div class="card-body">
+        {% if not schedule_a.reconciled %}
+        <div class="alert alert-warning">
+            <strong>Reconciliation warning:</strong> the roll-forward below computes
+            {{ schedule_a.members_end_of_period }} member(s) at period end, but this system's live
+            member directory currently shows {{ schedule_a.active_members_actual }} active member(s).
+            That mismatch means at least one status change happened without a logged reason -- find it
+            and record a membership event for it (edit the member and select a reason when toggling
+            Active) before filing.
+        </div>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-7">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr class="table-light"><td><strong>Total members, start of period</strong></td><td class="text-end"><strong>{{ schedule_a.members_start_of_period }}</strong></td></tr>
+                        <tr><td colspan="2" class="pt-3 pb-1"><strong>Additions</strong></td></tr>
+                        {% for event_type, count in schedule_a.additions.items() %}
+                        <tr><td class="ps-4">{{ event_type }}</td><td class="text-end">{{ count }}</td></tr>
+                        {% endfor %}
+                        <tr class="table-light"><td><strong>Total additions</strong></td><td class="text-end"><strong>{{ schedule_a.total_additions }}</strong></td></tr>
+                        <tr class="table-light"><td><strong>Total for period</strong></td><td class="text-end"><strong>{{ schedule_a.total_for_period }}</strong></td></tr>
+                        <tr><td colspan="2" class="pt-3 pb-1"><strong>Deductions</strong></td></tr>
+                        {% for event_type, count in schedule_a.deductions.items() %}
+                        <tr><td class="ps-4">{{ event_type }}</td><td class="text-end">{{ count }}</td></tr>
+                        {% endfor %}
+                        <tr class="table-light"><td><strong>Total deductions</strong></td><td class="text-end"><strong>{{ schedule_a.total_deductions }}</strong></td></tr>
+                        <tr class="table-light border-top border-2"><td><strong>Members, end of period</strong></td><td class="text-end"><strong>{{ schedule_a.members_end_of_period }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-5">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Dues records for {{ schedule_a.dues_year }}</td><td class="text-end">{{ schedule_a.dues_records_for_year }}</td></tr>
+                        <tr><td>Dues paid for {{ schedule_a.dues_year }}</td><td class="text-end">{{ schedule_a.dues_paid_for_year }}</td></tr>
+                        <tr class="table-light"><td><strong>Dues collected in this period</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_a.dues_collected_in_period) }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <p class="text-muted small mt-3 mb-0">
+            Every addition and deduction above is a logged membership event (initiation, transfer,
+            suspension, death, withdrawal, re-entry, or associate/insurance transfer), not a plain
+            active/inactive flag -- matching Form 1295's real roll-forward requirement.
+        </p>
+    </div>
+</div>
+
+<!-- Schedule B -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Schedule B -- Cash Transactions</strong>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('audit.form_1295_schedule_b_pdf', period_start=period_start, period_end=period_end) }}" target="_blank">
+            <i class="bi bi-file-earmark-pdf"></i> Download PDF
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Financial Secretary</h6>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Opening funds in possession</td><td class="text-end">${{ "%.2f"|format(schedule_b.financial_secretary.opening_funds_in_possession) }}</td></tr>
+                        <tr><td>Dues &amp; initiations received</td><td class="text-end">${{ "%.2f"|format(schedule_b.financial_secretary.dues_and_initiations_received) }}</td></tr>
+                        {% for f in schedule_b.financial_secretary.top_fundraisers %}
+                        <tr><td>Fundraiser: {{ f.name }}</td><td class="text-end">${{ "%.2f"|format(f.amount) }}</td></tr>
+                        {% endfor %}
+                        <tr><td>Miscellaneous income</td><td class="text-end">${{ "%.2f"|format(schedule_b.financial_secretary.misc_income) }}</td></tr>
+                        <tr class="table-light"><td><strong>Total cash received</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_b.financial_secretary.total_cash_received) }}</strong></td></tr>
+                        <tr><td>Transferred to Treasurer</td><td class="text-end">(${{ "%.2f"|format(schedule_b.financial_secretary.transferred_to_treasurer) }})</td></tr>
+                        <tr class="table-light"><td><strong>Closing funds in possession</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_b.financial_secretary.closing_funds_in_possession) }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Treasurer (Checking Account)</h6>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Opening balance</td><td class="text-end">${{ "%.2f"|format(schedule_b.treasurer.opening_balance) }}</td></tr>
+                        <tr><td>Received from Financial Secretary</td><td class="text-end">${{ "%.2f"|format(schedule_b.treasurer.received_from_financial_secretary) }}</td></tr>
+                        <tr><td>Transfers from savings</td><td class="text-end">${{ "%.2f"|format(schedule_b.treasurer.transfers_from_savings) }}</td></tr>
+                        <tr><td>Checking account interest</td><td class="text-end">${{ "%.2f"|format(schedule_b.treasurer.checking_account_interest) }}</td></tr>
+                        <tr><td>Per capita -- Supreme Council</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.per_capita_supreme_council) }})</td></tr>
+                        <tr><td>Per capita -- State Council</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.per_capita_state_council) }})</td></tr>
+                        <tr><td>General council expenses</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.general_council_expenses) }})</td></tr>
+                        <tr><td>Transfers to savings</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.transfers_to_savings) }})</td></tr>
+                        <tr><td>Charitable donations / misc.</td><td class="text-end">(${{ "%.2f"|format(schedule_b.treasurer.charitable_donations) }})</td></tr>
+                        <tr class="table-light"><td><strong>Closing balance</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_b.treasurer.closing_balance) }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0">{{ schedule_b.note }}</p>
+    </div>
+</div>
+
+<!-- Schedule C -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Schedule C -- Financial Position (as of {{ schedule_c.as_of_date }})</strong>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('audit.form_1295_schedule_c_pdf', period_start=period_start, period_end=period_end) }}" target="_blank">
+            <i class="bi bi-file-earmark-pdf"></i> Download PDF
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Current Assets</h6>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Financial Secretary cash on hand</td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.current.financial_secretary_cash_on_hand) }}</td></tr>
+                        <tr><td>Checking account</td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.current.checking_account) }}</td></tr>
+                        <tr><td>Savings account</td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.current.savings_account) }}</td></tr>
+                        <tr><td>Money market account</td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.current.money_market_account) }}</td></tr>
+                        <tr><td>Due from members <span class="text-muted small">({{ schedule_c.assets.current.due_from_members_note }})</span></td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.current.due_from_members) }}</td></tr>
+                        <tr class="table-light"><td><strong>Total current assets</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_c.assets.current.total_current_assets) }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Liabilities</h6>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Supreme Council charges</td><td class="text-end">${{ "%.2f"|format(schedule_c.liabilities.supreme_council_charges) }}</td></tr>
+                        <tr><td>State Council charges</td><td class="text-end">${{ "%.2f"|format(schedule_c.liabilities.state_council_charges) }}</td></tr>
+                        <tr><td>Advance payments <span class="text-muted small">({{ schedule_c.liabilities.advance_payments_note }})</span></td><td class="text-end">${{ "%.2f"|format(schedule_c.liabilities.advance_payments) }}</td></tr>
+                        <tr>
+                            <td>
+                                Miscellaneous liabilities
+                                {% if misc_liabilities_explanation_needed %}<span class="badge bg-warning text-dark ms-1">Needs explanation</span>{% endif %}
+                            </td>
+                            <td class="text-end">${{ "%.2f"|format(schedule_c.liabilities.misc_liabilities) }}</td>
+                        </tr>
+                        <tr class="table-light"><td><strong>Total liabilities</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_c.liabilities.total_liabilities) }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <table class="table table-sm mt-2 mb-0">
+            <tbody>
+                <tr class="table-light border-top border-2"><td><strong>Net Current Assets</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_c.net_current_assets) }}</strong></td></tr>
+            </tbody>
+        </table>
+
+        <h6 class="mt-4">Long-Term / Other Assets</h6>
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Certificates of deposit</td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.long_term.certificates_of_deposit) }}</td></tr>
+                        <tr><td>Mutual fund investments</td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.long_term.mutual_fund_investments) }}</td></tr>
+                        <tr><td>Other assets</td><td class="text-end">${{ "%.2f"|format(schedule_c.assets.long_term.other_assets) }}</td></tr>
+                        <tr class="table-light"><td><strong>Total long-term assets</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_c.assets.long_term.total_long_term_assets) }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <table class="table table-sm mt-2 mb-0">
+            <tbody>
+                <tr class="table-light"><td><strong>Total Assets</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_c.assets.total_assets) }}</strong></td></tr>
+                <tr class="table-light border-top border-2"><td><strong>Total Net Assets</strong></td><td class="text-end"><strong>${{ "%.2f"|format(schedule_c.total_net_assets) }}</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Wizard: explanations + attestation -->
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Explanations &amp; Attestation</strong>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">
+            Anything that can be pulled straight from the ledger is calculated above and can't be
+            edited here. The two things below genuinely can't be computed -- a plain-language
+            explanation for any non-zero miscellaneous line, and a record of who reviewed these
+            schedules before filing. Both are saved to CARES' tamper-evident audit trail, the same
+            as every other change in this system.
+        </p>
+
+        <form method="POST" action="{{ url_for('audit.form_1295_save_submission', period_start=period_start, period_end=period_end) }}">
+            <div class="mb-3">
+                <label for="misc_income_explanation" class="form-label">
+                    Miscellaneous income explanation
+                    {% if misc_income_explanation_needed %}<span class="badge bg-warning text-dark ms-1">Needs explanation</span>{% endif %}
+                </label>
+                <textarea class="form-control" id="misc_income_explanation" name="misc_income_explanation" rows="2"
+                          placeholder="e.g. raffle ticket sales not tied to a fundraiser project, member donations, etc.">{{ submission.misc_income_explanation if submission else '' }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label for="misc_liabilities_explanation" class="form-label">
+                    Miscellaneous liabilities explanation
+                    {% if misc_liabilities_explanation_needed %}<span class="badge bg-warning text-dark ms-1">Needs explanation</span>{% endif %}
+                </label>
+                <textarea class="form-control" id="misc_liabilities_explanation" name="misc_liabilities_explanation" rows="2"
+                          placeholder="e.g. an unpaid vendor invoice, a council loan, etc.">{{ submission.misc_liabilities_explanation if submission else '' }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm">Save Explanations</button>
+        </form>
+
+        <hr class="my-4">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                {% if submission and submission.is_attested %}
+                <p class="mb-0">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    Attested by <strong>{{ submission.attested_by.username if submission.attested_by else 'a user' }}</strong>
+                    on {{ submission.attested_at.strftime('%Y-%m-%d %H:%M') }} UTC.
+                </p>
+                {% else %}
+                <p class="mb-0 text-muted">Not yet attested for this period.</p>
+                {% endif %}
+            </div>
+            <form method="POST" action="{{ url_for('audit.form_1295_attest', period_start=period_start, period_end=period_end) }}" class="mt-2 mt-md-0">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    {{ 'Re-attest' if submission and submission.is_attested else 'Attest to These Schedules' }}
+                </button>
+            </form>
+        </div>
+        <p class="text-muted small mt-3 mb-0">
+            Attesting records that a specific logged-in user reviewed and finalized this period's
+            schedules -- it does not replace the Grand Knight's and trustees' physical signatures
+            required on the Form 1295 actually filed with Supreme.
+        </p>
+    </div>
+</div>
+{% endblock %}

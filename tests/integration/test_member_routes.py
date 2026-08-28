@@ -9,7 +9,7 @@ These tests verify that HTTP routes work correctly with the database.
 
 import pytest
 from flask import url_for
-from models import Member
+from models import Member, MembershipEvent
 
 
 @pytest.mark.integration
@@ -169,3 +169,100 @@ def test_create_many_members(admin_client, organization, db_session):
     # Verify members list loads with many members
     response = admin_client.get('/members')
     assert response.status_code == 200
+
+
+@pytest.mark.integration
+class TestMembershipEventLogging:
+    """
+    Creating or editing a member should keep models.MembershipEvent -- the
+    real source of truth behind Form 1295's Schedule A membership
+    roll-forward (see services/kofc_form_1295.py) -- in sync with what
+    actually happened, without ever requiring or guessing a reason the
+    user didn't provide.
+    """
+
+    def test_creating_a_member_logs_an_initiation_event(self, admin_client, organization, db_session):
+        response = admin_client.post('/members/new', data={
+            'name': 'New Knight',
+            'email': 'newknight@example.com',
+            'join_date': '2026-03-01',
+            'active': True,
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+        member = Member.query.filter_by(name='New Knight', organization=organization).first()
+        assert member is not None
+
+        events = MembershipEvent.query.filter_by(member_id=member.id).all()
+        assert len(events) == 1
+        assert events[0].event_type == 'Initiation'
+        assert events[0].event_date == member.join_date
+        assert events[0].is_addition is True
+
+    def test_deactivating_a_member_with_a_reason_logs_the_event(self, admin_client, member, db_session):
+        assert member.active is True
+
+        response = admin_client.post(f'/members/{member.id}/edit', data={
+            'name': member.name,
+            'email': member.email,
+            'phone': member.phone,
+            'address': member.address,
+            'city': member.city,
+            'state': member.state,
+            'zip_code': member.zip_code,
+            # 'active' checkbox omitted -- unchecked
+            'membership_event_type': 'Withdrawal',
+            'membership_event_date': '2026-04-15',
+            'membership_event_notes': 'Moved out of the area.',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+        db_session.refresh(member)
+        assert member.active is False
+
+        events = MembershipEvent.query.filter_by(member_id=member.id, event_type='Withdrawal').all()
+        assert len(events) == 1
+        assert events[0].event_date.isoformat() == '2026-04-15'
+        assert events[0].notes == 'Moved out of the area.'
+        assert events[0].is_addition is False
+
+    def test_deactivating_a_member_without_a_reason_logs_nothing(self, admin_client, member, db_session):
+        """
+        A status change with no reason supplied is allowed through rather
+        than blocked or guessed -- schedule_a()'s reconciliation check is
+        what surfaces this gap later, not a required field here.
+        """
+        assert member.active is True
+
+        response = admin_client.post(f'/members/{member.id}/edit', data={
+            'name': member.name,
+            'email': member.email,
+            'phone': member.phone,
+            'address': member.address,
+            'city': member.city,
+            'state': member.state,
+            'zip_code': member.zip_code,
+            # 'active' checkbox omitted -- unchecked, and no reason given
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+        db_session.refresh(member)
+        assert member.active is False
+        assert MembershipEvent.query.filter_by(member_id=member.id).count() == 0
+
+    def test_editing_a_member_without_changing_active_logs_no_event(self, admin_client, member, db_session):
+        response = admin_client.post(f'/members/{member.id}/edit', data={
+            'name': member.name,
+            'email': 'unchanged-active@example.com',
+            'phone': member.phone,
+            'address': member.address,
+            'city': member.city,
+            'state': member.state,
+            'zip_code': member.zip_code,
+            'active': 'on',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+        db_session.refresh(member)
+        assert member.active is True
+        assert MembershipEvent.query.filter_by(member_id=member.id).count() == 0

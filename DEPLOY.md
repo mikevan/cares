@@ -521,11 +521,12 @@ psql $DATABASE_URL < backup.sql
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | `sqlite:///kofc_accounting.db` | Database connection string |
-| `SECRET_KEY` | Yes | Random on startup | Flask secret key (MUST set in production!) |
-| `FLASK_ENV` | No | `production` | Environment mode |
+| `FLASK_ENV` | **Yes, in production** | *(unset)* | Set to `production` to deploy for real. This is also what gates the two rows below -- with `FLASK_ENV=production` set, a missing `DATABASE_URL` or `SECRET_KEY` makes the app refuse to start instead of silently using a local/dev fallback. Anything else (including unset) is treated as local development. |
+| `DATABASE_URL` | Yes, when `FLASK_ENV=production` | `postgresql://postgres:dev123@localhost/kofc_accounting` (dev only) | Database connection string |
+| `SECRET_KEY` | Yes, when `FLASK_ENV=production` | A well-known dev value (dev only) | Flask secret key (MUST set in production!) |
 | `FLASK_DEBUG` | No | `False` | Debug mode (never True in production!) |
 | `PORT` | No | `5000` | Application port |
+| `ENABLE_TRANSLATION` | No | `false` | Off by default. Turning this on sends the full rendered HTML of every page -- including account balances, transaction memos, and member/donor PII -- to a third-party API (Groq) for translation whenever a visitor's browser requests a non-English language. Only enable this after reading `services/translation_service.py` and deciding that's acceptable for your chapter's data. |
 
 ### Security Best Practices
 

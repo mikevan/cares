@@ -13,6 +13,7 @@ Safe to run multiple times - checks for existing sample data.
 
 from app import app, db
 from models import User, Organization, Member, Project, ChartOfAccounts, JournalEntry, JournalEntryLine
+from services.project_service import assign_member
 from datetime import datetime, timedelta
 from decimal import Decimal
 import random
@@ -231,22 +232,23 @@ def create_sample_projects(org_id, members):
             organization_id=org_id
         )
         
+        db.session.add(project)
+        db.session.flush()  # project needs an id before assignments can reference it
+
         # Assign leaders
         num_leaders = proj_data.get("leaders", 1)
         leaders = random.sample(active_members, min(num_leaders, len(active_members)))
         for leader in leaders:
-            project.leaders.append(leader)
-        
+            assign_member(project, leader, role='Leader')
+
         # Assign volunteers (including leaders)
         num_volunteers = proj_data.get("volunteers", 3)
         volunteers = random.sample(active_members, min(num_volunteers, len(active_members)))
         for volunteer in volunteers:
-            if volunteer not in project.volunteers:
-                project.volunteers.append(volunteer)
-        
+            assign_member(project, volunteer, role='Volunteer')
+
         projects.append(project)
-        db.session.add(project)
-    
+
     db.session.flush()
     return projects
 

@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required, current_user
 from models import db, Project, JournalEntry, ChartOfAccounts
 from services.reports import FinancialReports
+from services.usage_service import log_event
 from datetime import date
 from sqlalchemy import func
 
@@ -76,6 +77,8 @@ def balance_sheet():
     
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.balance_sheet_detailed(as_of_date)
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'balance_sheet', 'year': year})
 
     # Debugging support
     if request.args.get('debug') == '1' or request.args.get('format') == 'json':
@@ -120,6 +123,8 @@ def income_statement():
 
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.income_statement(start_date, end_date)
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'income_statement', 'year': year})
 
     # Debugging support: return JSON if requested and log counts
     if request.args.get('debug') == '1' or request.args.get('format') == 'json':
@@ -158,6 +163,8 @@ def cash_flow():
 
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.cash_flow_statement(start_date, end_date)
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'cash_flow', 'year': year})
 
     if request.args.get('debug') == '1' or request.args.get('format') == 'json':
         current_app.logger.info(f"Cash flow debug for org={current_user.organization_id} year={year} -> net_change={data.get('net_change_in_cash')}")
@@ -194,6 +201,8 @@ def functional_expenses():
 
     reports = FinancialReports(db.session, current_user.organization_id)
     data = reports.functional_expenses(start_date, end_date)
+    log_event('report.generated', organization_id=current_user.organization_id,
+              user_id=current_user.id, meta={'report': 'functional_expenses', 'year': year})
 
     if request.args.get('debug') == '1' or request.args.get('format') == 'json':
         current_app.logger.info(f"Functional expenses debug for org={current_user.organization_id} year={year} -> total_expenses={data.get('total_expenses')}")

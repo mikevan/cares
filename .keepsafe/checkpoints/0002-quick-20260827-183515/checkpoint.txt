@@ -1,0 +1,946 @@
+Checkpoint: 0002-quick-20260827-183515
+Name: quick-20260827-183515
+Created: 2026-08-27T23:35:15Z
+Mode: delta
+Base: 0001-quick-20260827-151412
+
+M app.py [blob 42ee57abdd142991bff90cf50e992b14496666d3e7c4ee69f5c2dc56dba7a247 size=5296]
+
+M blueprints/project_routes.py [blob 77c12b73a74d8150a4287904bf855298ec974565c4f88884b5339af505122ede size=17889]
+
+M blueprints/transaction_routes.py [blob d4bd9c3d0271756e088d79612cedfb7fe5b2e19f875bee8ab5e5bdde43c9fb7f size=7217]
+
+M load_sample_data.py [blob 1960235f8f93bd5fac9e82df8ea7ca6ccef95a84e6d3d96e766cf20ff3c1b85b size=30023]
+
+M migrate_production.py [blob 0c6429ce4584904e655292233dfe3388d26c7e6b4b1346ebe5ead966da757a5d size=13270]
+
+M models.py [blob 2e0a898d2820c60c5bf455048fe96c786da5527cc7bd9363ac5937cadd4361d4 size=19664]
+
+M requirements.txt [blob 1d215aa043384ad8bc0086f23550a7dce144c63e3d7ed64882399b8570067007 size=139]
+
+A scripts/verify_org_isolation.py
+--- scripts/verify_org_isolation.py ---
+"""
+One-time helper: sets up a throwaway second organization + user so you can
+manually verify the cross-tenant authorization fix (project view/edit,
+transaction view, journal entry void).
+
+Run locally:
+    python scripts/verify_org_isolation.py
+
+Safe to re-run — reuses the test org/user if they already exist. Delete the
+"ISOLATION-TEST ORG (delete me)" organization and its user when you're done
+testing (Settings won't do it — this script's cleanup instructions are at
+the bottom of its output, or just do it via psql / a DB client).
+"""
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from app import app
+from models import db, Organization, User, Project, JournalEntry
+
+TEST_ORG_NAME = "ISOLATION-TEST ORG (delete me)"
+TEST_USERNAME = "isolation_test"
+TEST_PASSWORD = "IsolationTest123!"
+
+with app.app_context():
+    real_org = Organization.query.filter(Organization.name != TEST_ORG_NAME).first()
+    if not real_org:
+        print("No real organization found — run the app once first so it seeds one.")
+        sys.exit(1)
+
+    sample_project = Project.query.filter_by(organization_id=real_org.id).first()
+    sample_entry = (
+        JournalEntry.query.join(Project)
+        .filter(Project.organization_id == real_org.id)
+        .first()
+    )
+
+    test_org = Organization.query.filter_by(name=TEST_ORG_NAME).first()
+    if not test_org:
+        test_org = Organization(name=TEST_ORG_NAME, org_type='Chapter', fiscal_year_start=1)
+        db.session.add(test_org)
+        db.session.commit()
+        print(f"Created test organization (id={test_org.id})")
+    else:
+        print(f"Test organization already exists (id={test_org.id})")
+
+    test_user = User.query.filter_by(username=TEST_USERNAME).first()
+    if not test_user:
+        test_user = User(
+            username=TEST_USERNAME,
+            email='isolation_test@example.com',
+            role='Admin',
+            organization_id=test_org.id,
+            active=True,
+        )
+        test_user.set_password(TEST_PASSWORD)
+        db.session.add(test_user)
+        db.session.commit()
+        print(f"Created test user (id={test_user.id})")
+    else:
+        print("Test user already exists")
+
+    print("\n" + "=" * 60)
+    print("MANUAL VERIFICATION STEPS")
+    print("=" * 60)
+    print(f"1. Log out of admin, log in as:")
+    print(f"   username: {TEST_USERNAME}")
+    print(f"   password: {TEST_PASSWORD}")
+    print(f"   (this user belongs to '{TEST_ORG_NAME}', NOT your real org)")
+    print()
+    if sample_project:
+        print(f"2. Try:  /projects/{sample_project.id}/view")
+        print(f"         /projects/{sample_project.id}/edit")
+        print(f"   Expect: 404 Not Found (before the fix, this showed/edited")
+        print(f"   your real org's project \"{sample_project.name}\").")
+    else:
+        print("2. (No project found in your real org to test against.)")
+    print()
+    if sample_entry:
+        print(f"3. Try:  /transactions/{sample_entry.id}")
+        print(f"   Expect: 404 Not Found (before the fix, this showed the")
+        print(f"   real transaction's amounts and memo).")
+    else:
+        print("3. (No journal entry found in your real org to test against.)")
+    print()
+    print("4. When done, delete the test data:")
+    print(f"   DELETE FROM users WHERE username = '{TEST_USERNAME}';")
+    print(f"   DELETE FROM organizations WHERE name = '{TEST_ORG_NAME}';")
+    print("=" * 60)
+
+M services/journal_service.py [blob 5e8969413a97f197de0de185a27baf3f97ba9aa4c2836989f2639f74b2b3c105 size=8221]
+
+A services/project_service.py
+--- services/project_service.py ---
+"""
+CARES Project Service
+Single gateway for all project leadership/volunteer assignment changes.
+
+Nothing should create, end, or otherwise mutate a ProjectAssignment row
+except through the functions in this module. Routing all assignment
+changes through here keeps history consistent (at most one open-ended
+assignment per member+project+role at a time) and gives every
+appointment, resignation, dismissal, term-completion and annual restart
+a single, auditable code path -- mirroring how services/journal_service.py
+is the single gateway for GL postings.
+"""
+
+from datetime import date
+
+from models import db, Project, ProjectAssignment, PROJECT_ASSIGNMENT_END_REASONS
+
+
+class ProjectServiceError(Exception):
+    """Raised when a project assignment/lifecycle action cannot be completed."""
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _get_open_assignment(project_id, member_id, role):
+    return ProjectAssignment.query.filter_by(
+        project_id=project_id, member_id=member_id, role=role, end_date=None
+    ).first()
+
+
+# ---------------------------------------------------------------------------
+# Single-assignment lifecycle
+# ---------------------------------------------------------------------------
+
+def assign_member(project, member, role, assigned_by=None, start_date=None):
+    """Appoint a member as a Leader or Volunteer on a project.
+
+    Idempotent: if the member already has an open assignment in that role
+    on this project, the existing assignment is returned unchanged rather
+    than creating a duplicate.
+    """
+    if role not in ('Leader', 'Volunteer'):
+        raise ProjectServiceError(f"Invalid role '{role}'. Must be 'Leader' or 'Volunteer'.")
+
+    if member.organization_id != project.organization_id:
+        raise ProjectServiceError(
+            "Member and project belong to different organizations."
+        )
+
+    existing = _get_open_assignment(project.id, member.id, role)
+    if existing:
+        return existing
+
+    assignment = ProjectAssignment(
+        project_id=project.id,
+        member_id=member.id,
+        role=role,
+        start_date=start_date or date.today(),
+        assigned_by=assigned_by,
+    )
+    db.session.add(assignment)
+    db.session.commit()
+    return assignment
+
+
+def end_assignment(assignment, end_reason, ended_by=None, end_notes=None, end_date=None):
+    """Close out a single assignment: resignation, dismissal, replacement, etc.
+
+    This is the only way an assignment's end_date/end_reason should be set.
+    """
+    if end_reason not in PROJECT_ASSIGNMENT_END_REASONS:
+        raise ProjectServiceError(
+            f"Invalid end_reason '{end_reason}'. Must be one of {PROJECT_ASSIGNMENT_END_REASONS}."
+        )
+    if assignment.end_date is not None:
+        raise ProjectServiceError("This assignment has already ended.")
+
+    assignment.end_date = end_date or date.today()
+    assignment.end_reason = end_reason
+    assignment.end_notes = end_notes
+    assignment.ended_by = ended_by
+    db.session.commit()
+    return assignment
+
+
+def replace_leader(project, outgoing_member, incoming_member, ended_by=None, end_notes=None):
+    """Convenience wrapper for the common case of swapping one leader for
+    another mid-term: ends the outgoing leader's assignment as 'Replaced'
+    and appoints the incoming leader in a single call.
+    """
+    outgoing = _get_open_assignment(project.id, outgoing_member.id, 'Leader')
+    if not outgoing:
+        raise ProjectServiceError(
+            f"{outgoing_member.name} is not currently a leader on this project."
+        )
+    end_assignment(outgoing, end_reason='Replaced', ended_by=ended_by, end_notes=end_notes)
+    return assign_member(project, incoming_member, role='Leader', assigned_by=ended_by)
+
+
+# ---------------------------------------------------------------------------
+# Whole-project lifecycle
+# ---------------------------------------------------------------------------
+
+def close_project_for_year(project, ended_by=None, end_notes=None):
+    """End every currently-open assignment on a project (the year's cycle is
+    over) and mark the project itself Completed.
+
+    This does not create next year's project -- see restart_project() for
+    that step, which is a deliberate, separate action.
+    """
+    for assignment in project.active_assignments:
+        end_assignment(
+            assignment, end_reason='Term Completed', ended_by=ended_by, end_notes=end_notes
+        )
+    project.status = 'Completed'
+    db.session.commit()
+    return project
+
+
+def restart_project(project, start_date=None, carry_forward_people=True, created_by=None):
+    """Start next year's iteration of a recurring project.
+
+    Creates a brand-new Project row linked back to this one via
+    previous_project_id, rather than mutating this Project in place. That
+    keeps this year's budget, journal entries, and assignment history
+    exactly as they were, and gives the new year a clean assignment history
+    of its own -- while still being able to walk the chain of a project's
+    full multi-year history via previous_project / next_project.
+    """
+    if project.next_project is not None:
+        raise ProjectServiceError(
+            f"'{project.name}' already has a follow-on project for the next cycle."
+        )
+
+    new_project = Project(
+        name=project.name,
+        description=project.description,
+        start_date=start_date or date.today(),
+        end_date=None,
+        status='Active',
+        budget=project.budget,
+        organization_id=project.organization_id,
+        previous_project=project,
+    )
+    db.session.add(new_project)
+    db.session.flush()  # assign new_project.id before creating assignments
+
+    if carry_forward_people:
+        # Only members whose term ended because the year completed normally
+        # are carried forward automatically -- someone who resigned or was
+        # dismissed mid-year does not silently reappear next year.
+        completed = [
+            a for a in project.assignments.filter(
+                ProjectAssignment.end_reason == 'Term Completed'
+            ).all()
+        ]
+        seen = set()
+        for a in completed:
+            key = (a.member_id, a.role)
+            if key in seen:
+                continue
+            seen.add(key)
+            assign_member(
+                new_project, a.member, role=a.role,
+                assigned_by=created_by, start_date=new_project.start_date
+            )
+
+    db.session.commit()
+    return new_project
+
+M templates/base.html [blob cff1fbebe46b09cd4f7ce594ba5d156fb0af1ba076a09d14e7c085dcea6d64cb size=24812]
+
+M templates/dues_roster.html [blob bb836ef3dea24bcb232641a0502d571a47a14d3166151bc3296a55d9d43e8f7c size=12274]
+
+M templates/project_form.html [blob b462cb8fc5062884cc55401c061276bdb8a0d6ac43dab76331efdd46cbd653d0 size=17049]
+
+A templates/project_restart.html
+--- templates/project_restart.html ---
+{% extends "base.html" %}
+
+{% block title %}Restart Project{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Restart "{{ project.name }}" for the Next Cycle</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p>
+            This creates a <strong>new</strong> project for the next cycle, linked back to
+            <strong>{{ project.name }}</strong> ({{ project.start_date.strftime('%Y') if project.start_date else '' }}).
+            The original project and its budget, journal entries, and assignment history are left exactly as they are.
+        </p>
+        <form method="POST">
+            <div class="mb-3">
+                <label for="start_date" class="form-label">New Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" style="max-width: 220px;">
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="carry_forward_people" name="carry_forward_people" checked>
+                <label class="form-check-label" for="carry_forward_people">
+                    Carry forward leaders/volunteers whose term completed normally
+                    (anyone who resigned or was dismissed will not be carried forward automatically).
+                </label>
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{{ url_for('projects.view', id=project.id) }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-arrow-repeat"></i> Start Next Cycle
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+A tests/integration/test_csrf_protection.py
+--- tests/integration/test_csrf_protection.py ---
+"""
+CARES Test Harness - Integration Tests - CSRF Protection
+============================================================
+
+Regression tests for the Flask-WTF CSRFProtect wiring added in app.py
+(and mirrored onto the test app in conftest.py).
+
+The shared `app` fixture disables CSRF (WTF_CSRF_ENABLED=False) so every
+other integration test can keep posting plain form data without a token --
+that's correct for testing route logic in isolation. These tests flip
+protection ON for just their own duration to prove the mechanism itself
+actually rejects unprotected requests, then turn it back off in a finally
+block so no other test in the session is affected.
+"""
+
+import re
+import pytest
+
+
+def _extract_csrf_token(html_bytes):
+    """Pull the token out of the <meta name="csrf-token" ...> tag base.html renders."""
+    match = re.search(rb'name="csrf-token" content="([^"]+)"', html_bytes)
+    assert match, "csrf-token meta tag not found in rendered page"
+    return match.group(1).decode()
+
+
+@pytest.mark.integration
+class TestCSRFProtection:
+    """A POST without a valid CSRF token must be rejected; one with a valid
+    token must not be rejected for CSRF reasons."""
+
+    def test_post_without_csrf_token_is_rejected(self, client, app):
+        app.config['WTF_CSRF_ENABLED'] = True
+        try:
+            response = client.post('/login', data={
+                'username': 'nonexistent',
+                'password': 'whatever',
+            })
+            assert response.status_code == 400
+        finally:
+            app.config['WTF_CSRF_ENABLED'] = False
+
+    def test_post_with_valid_csrf_token_is_not_rejected(self, client, app):
+        app.config['WTF_CSRF_ENABLED'] = True
+        try:
+            get_response = client.get('/login')
+            token = _extract_csrf_token(get_response.data)
+
+            response = client.post('/login', data={
+                'username': 'nonexistent',
+                'password': 'whatever',
+                'csrf_token': token,
+            })
+
+            # A valid token clears CSRF validation. The login itself still
+            # fails on bad credentials (re-render with a flash message),
+            # but that is never CSRFProtect's 400.
+            assert response.status_code != 400
+        finally:
+            app.config['WTF_CSRF_ENABLED'] = False
+
+
+@pytest.mark.integration
+class TestCSRFProtectionOnAjaxEndpoints:
+    """The dues-roster toggles POST JSON via fetch(), not a form field, so
+    they must supply the token via the X-CSRFToken header instead."""
+
+    def test_dues_toggle_without_header_is_rejected(self, admin_client, app, organization, db_session):
+        from tests.fixtures.factories import MemberFactory
+
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+
+        app.config['WTF_CSRF_ENABLED'] = True
+        try:
+            response = admin_client.post(
+                '/members/dues/toggle',
+                json={'member_id': member.id, 'year': 2026, 'paid': True},
+            )
+            assert response.status_code == 400
+        finally:
+            app.config['WTF_CSRF_ENABLED'] = False
+
+    def test_dues_toggle_with_header_is_not_rejected(self, admin_client, app, organization, db_session):
+        from tests.fixtures.factories import MemberFactory
+
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+
+        app.config['WTF_CSRF_ENABLED'] = True
+        try:
+            get_response = admin_client.get('/members')
+            token = _extract_csrf_token(get_response.data)
+
+            response = admin_client.post(
+                '/members/dues/toggle',
+                json={'member_id': member.id, 'year': 2026, 'paid': True},
+                headers={'X-CSRFToken': token},
+            )
+            assert response.status_code != 400
+        finally:
+            app.config['WTF_CSRF_ENABLED'] = False
+
+A tests/integration/test_org_isolation.py
+--- tests/integration/test_org_isolation.py ---
+"""
+CARES Test Harness - Integration Tests - Organization Isolation
+==================================================================
+
+Regression tests for the cross-tenant authorization gaps fixed in
+project_routes.view/edit, transaction_routes.view, journal_service.void_entry,
+and the project volunteer/leader assignment routes.
+
+Each test creates a SECOND organization (distinct from the `organization`
+fixture used by `admin_client`) and confirms a user logged into org A cannot
+read, edit, void, or attach records that belong to org B.
+"""
+
+import pytest
+from decimal import Decimal
+from models import Project, JournalEntry
+from services.journal_service import void_entry, JournalServiceError
+from tests.fixtures.factories import (
+    OrganizationFactory, ProjectFactory, MemberFactory, JournalEntryFactory, UserFactory,
+)
+
+
+@pytest.mark.integration
+class TestProjectIsolation:
+    """A user in one organization must not be able to view or edit another's projects."""
+
+    def test_view_project_in_other_org_returns_404(self, admin_client, organization, db_session):
+        other_org = OrganizationFactory()
+        other_project = ProjectFactory(organization=other_org, name='Other Org Project')
+        db_session.commit()
+
+        response = admin_client.get(f'/projects/{other_project.id}/view')
+
+        assert response.status_code == 404
+
+    def test_edit_project_in_other_org_returns_404(self, admin_client, organization, db_session):
+        other_org = OrganizationFactory()
+        other_project = ProjectFactory(organization=other_org, name='Other Org Project')
+        db_session.commit()
+
+        # GET the edit form
+        response = admin_client.get(f'/projects/{other_project.id}/edit')
+        assert response.status_code == 404
+
+    def test_edit_project_in_other_org_does_not_modify_it(self, admin_client, organization, db_session):
+        other_org = OrganizationFactory()
+        other_project = ProjectFactory(
+            organization=other_org, name='Untouched Name', budget=Decimal('500.00')
+        )
+        db_session.commit()
+
+        response = admin_client.post(f'/projects/{other_project.id}/edit', data={
+            'name': 'Hijacked Name',
+            'status': 'Active',
+            'budget': '999999.00',
+        })
+
+        assert response.status_code == 404
+
+        db_session.refresh(other_project)
+        assert other_project.name == 'Untouched Name'
+        assert other_project.budget == Decimal('500.00')
+
+    def test_add_volunteer_from_other_org_is_rejected(self, admin_client, organization, db_session):
+        """A member belonging to a different organization must not be attachable
+        as a volunteer on this organization's project."""
+        own_project = ProjectFactory(organization=organization, name='Own Project')
+        other_org = OrganizationFactory()
+        outside_member = MemberFactory(organization=other_org, name='Outsider')
+        db_session.commit()
+
+        response = admin_client.post(f'/projects/{own_project.id}/volunteers/add', data={
+            'member_id': outside_member.id,
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        db_session.refresh(own_project)
+        assert outside_member not in own_project.volunteers
+
+    def test_add_leader_from_other_org_is_rejected(self, admin_client, organization, db_session):
+        own_project = ProjectFactory(organization=organization, name='Own Project')
+        other_org = OrganizationFactory()
+        outside_member = MemberFactory(organization=other_org, name='Outsider')
+        db_session.commit()
+
+        response = admin_client.post(f'/projects/{own_project.id}/leaders/add', data={
+            'member_id': outside_member.id,
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        db_session.refresh(own_project)
+        assert outside_member not in own_project.leaders
+
+    def test_new_project_ignores_volunteer_ids_from_other_org(self, admin_client, organization, db_session):
+        other_org = OrganizationFactory()
+        outside_member = MemberFactory(organization=other_org, name='Outsider')
+        db_session.commit()
+
+        response = admin_client.post('/projects/new', data={
+            'name': 'New Project With Outsider',
+            'status': 'Active',
+            'volunteers': [str(outside_member.id)],
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        project = Project.query.filter_by(name='New Project With Outsider').first()
+        assert project is not None
+        assert outside_member not in project.volunteers
+
+
+@pytest.mark.integration
+class TestTransactionIsolation:
+    """A user in one organization must not be able to view or void another's transactions."""
+
+    def test_view_transaction_in_other_org_returns_404(self, admin_client, organization, db_session):
+        other_org = OrganizationFactory()
+        other_project = ProjectFactory(organization=other_org)
+        other_entry = JournalEntryFactory(
+            project=other_project, description='Other Org Transaction'
+        )
+        db_session.commit()
+
+        response = admin_client.get(f'/transactions/{other_entry.id}')
+
+        assert response.status_code == 404
+
+    def test_void_transaction_in_other_org_does_not_void_it(self, admin_client, organization, db_session):
+        other_org = OrganizationFactory()
+        other_project = ProjectFactory(organization=other_org)
+        other_entry = JournalEntryFactory(project=other_project, status='Posted')
+        db_session.commit()
+
+        response = admin_client.post(
+            f'/transactions/{other_entry.id}/void', follow_redirects=True
+        )
+
+        # The route redirects with a flash error rather than 404ing, but the
+        # entry itself must be left completely untouched.
+        assert response.status_code == 200
+        db_session.refresh(other_entry)
+        assert other_entry.status == 'Posted'
+
+
+@pytest.mark.integration
+class TestVoidEntryServiceIsolation:
+    """Direct tests of services.journal_service.void_entry's organization scoping,
+    independent of the HTTP layer."""
+
+    def test_void_entry_succeeds_for_own_organization(self, organization, db_session):
+        user = UserFactory(organization=organization)
+        project = ProjectFactory(organization=organization)
+        entry = JournalEntryFactory(project=project, created_by=user.id, status='Posted')
+        db_session.commit()
+
+        result = void_entry(entry.id, voided_by=user.id, organization_id=organization.id)
+
+        assert result.status == 'Voided'
+
+    def test_void_entry_raises_for_other_organization(self, organization, db_session):
+        other_org = OrganizationFactory()
+        other_project = ProjectFactory(organization=other_org)
+        other_entry = JournalEntryFactory(project=other_project, status='Posted')
+        db_session.commit()
+
+        with pytest.raises(JournalServiceError):
+            # Calling with `organization.id` (a DIFFERENT org than the entry's)
+            # must be treated the same as "not found" -- it must not void it.
+            void_entry(other_entry.id, voided_by=1, organization_id=organization.id)
+
+        db_session.refresh(other_entry)
+        assert other_entry.status == 'Posted'
+
+A tests/integration/test_project_lifecycle.py
+--- tests/integration/test_project_lifecycle.py ---
+"""
+CARES Test Harness - Integration Tests - Project Leadership Lifecycle
+=======================================================================
+
+Covers services/project_service.py (assign_member, end_assignment,
+close_project_for_year, restart_project) and the project_routes.py
+endpoints that wrap them: appointing a leader/volunteer, resigning,
+being dismissed, a project's year closing out, and restarting the
+project for the next cycle as a new, linked Project row.
+"""
+
+import pytest
+from datetime import date
+from models import db, Project, ProjectAssignment, PROJECT_ASSIGNMENT_END_REASONS
+from services.project_service import (
+    assign_member, end_assignment, close_project_for_year, restart_project, ProjectServiceError
+)
+from tests.fixtures.factories import ProjectFactory, MemberFactory, OrganizationFactory
+
+
+@pytest.mark.integration
+class TestAssignMember:
+    """services.project_service.assign_member"""
+
+    def test_assign_member_creates_open_assignment(self, organization, db_session):
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+
+        assignment = assign_member(project, member, role='Leader')
+
+        assert assignment.id is not None
+        assert assignment.project_id == project.id
+        assert assignment.member_id == member.id
+        assert assignment.role == 'Leader'
+        assert assignment.end_date is None
+        assert assignment.is_active is True
+        assert member in project.leaders
+
+    def test_assign_member_is_idempotent(self, organization, db_session):
+        """Assigning the same member to the same role twice returns the
+        existing open assignment instead of creating a duplicate."""
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+
+        first = assign_member(project, member, role='Volunteer')
+        second = assign_member(project, member, role='Volunteer')
+
+        assert first.id == second.id
+        assert ProjectAssignment.query.filter_by(
+            project_id=project.id, member_id=member.id, role='Volunteer'
+        ).count() == 1
+
+    def test_assign_member_rejects_invalid_role(self, organization, db_session):
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+
+        with pytest.raises(ProjectServiceError):
+            assign_member(project, member, role='Manager')
+
+    def test_assign_member_rejects_cross_organization_member(self, organization, db_session):
+        project = ProjectFactory(organization=organization)
+        other_org = OrganizationFactory()
+        outside_member = MemberFactory(organization=other_org)
+        db_session.commit()
+
+        with pytest.raises(ProjectServiceError):
+            assign_member(project, outside_member, role='Volunteer')
+
+
+@pytest.mark.integration
+class TestEndAssignment:
+    """services.project_service.end_assignment"""
+
+    @pytest.mark.parametrize('reason', PROJECT_ASSIGNMENT_END_REASONS)
+    def test_end_assignment_accepts_every_defined_reason(self, organization, db_session, reason):
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+        assignment = assign_member(project, member, role='Leader')
+
+        ended = end_assignment(assignment, end_reason=reason, end_notes='test note')
+
+        assert ended.end_reason == reason
+        assert ended.end_date is not None
+        assert ended.end_notes == 'test note'
+        assert ended.is_active is False
+        assert member not in project.leaders
+
+    def test_end_assignment_rejects_unknown_reason(self, organization, db_session):
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+        assignment = assign_member(project, member, role='Volunteer')
+
+        with pytest.raises(ProjectServiceError):
+            end_assignment(assignment, end_reason='Got Bored')
+
+    def test_end_assignment_rejects_already_ended(self, organization, db_session):
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+        assignment = assign_member(project, member, role='Volunteer')
+        end_assignment(assignment, end_reason='Resigned')
+
+        with pytest.raises(ProjectServiceError):
+            end_assignment(assignment, end_reason='Dismissed')
+
+    def test_dismissed_and_resigned_are_distinguishable_in_history(self, organization, db_session):
+        """Two different leaders leaving for two different reasons must each
+        keep their own recorded reason -- this is the whole point of moving
+        off a bare many-to-many table."""
+        project = ProjectFactory(organization=organization)
+        quitter = MemberFactory(organization=organization, name='Quitter')
+        fired = MemberFactory(organization=organization, name='Fired')
+        db_session.commit()
+
+        quit_assignment = assign_member(project, quitter, role='Leader')
+        fired_assignment = assign_member(project, fired, role='Leader')
+
+        end_assignment(quit_assignment, end_reason='Resigned')
+        end_assignment(fired_assignment, end_reason='Dismissed', end_notes='Repeated no-shows')
+
+        assert quit_assignment.end_reason == 'Resigned'
+        assert fired_assignment.end_reason == 'Dismissed'
+        assert fired_assignment.end_notes == 'Repeated no-shows'
+        assert quitter not in project.leaders
+        assert fired not in project.leaders
+
+
+@pytest.mark.integration
+class TestCloseProjectForYear:
+    """services.project_service.close_project_for_year"""
+
+    def test_close_ends_every_open_assignment_as_term_completed(self, organization, db_session):
+        project = ProjectFactory(organization=organization, status='Active')
+        leader = MemberFactory(organization=organization)
+        volunteer = MemberFactory(organization=organization)
+        db_session.commit()
+        assign_member(project, leader, role='Leader')
+        assign_member(project, volunteer, role='Volunteer')
+
+        close_project_for_year(project)
+
+        assert project.status == 'Completed'
+        assert project.active_assignments == []
+        for assignment in project.assignments.all():
+            assert assignment.end_reason == 'Term Completed'
+            assert assignment.end_date is not None
+
+    def test_close_does_not_touch_already_ended_assignments(self, organization, db_session):
+        """A leader who resigned mid-year keeps 'Resigned' -- closing the
+        project for the year must not overwrite that with 'Term Completed'."""
+        project = ProjectFactory(organization=organization, status='Active')
+        quitter = MemberFactory(organization=organization)
+        stayed = MemberFactory(organization=organization)
+        db_session.commit()
+        quit_assignment = assign_member(project, quitter, role='Leader')
+        end_assignment(quit_assignment, end_reason='Resigned')
+        assign_member(project, stayed, role='Volunteer')
+
+        close_project_for_year(project)
+
+        assert quit_assignment.end_reason == 'Resigned'
+
+
+@pytest.mark.integration
+class TestRestartProject:
+    """services.project_service.restart_project"""
+
+    def test_restart_creates_new_linked_project(self, organization, db_session):
+        project = ProjectFactory(organization=organization, name='Annual Fundraiser', status='Active')
+        db_session.commit()
+        close_project_for_year(project)
+
+        new_project = restart_project(project, start_date=date(2027, 1, 1))
+
+        assert new_project.id != project.id
+        assert new_project.previous_project_id == project.id
+        assert new_project.previous_project == project
+        assert project.next_project == new_project
+        assert new_project.name == project.name
+        assert new_project.organization_id == project.organization_id
+        assert new_project.status == 'Active'
+        assert new_project.start_date == date(2027, 1, 1)
+
+    def test_restart_carries_forward_only_term_completed_people(self, organization, db_session):
+        project = ProjectFactory(organization=organization, status='Active')
+        stayed_leader = MemberFactory(organization=organization, name='Stayed')
+        quit_leader = MemberFactory(organization=organization, name='Quit')
+        db_session.commit()
+
+        stayed_assignment = assign_member(project, stayed_leader, role='Leader')
+        quit_assignment = assign_member(project, quit_leader, role='Leader')
+        end_assignment(quit_assignment, end_reason='Resigned')
+        close_project_for_year(project)  # ends stayed_assignment as Term Completed
+
+        new_project = restart_project(project, start_date=date(2027, 1, 1))
+
+        assert stayed_leader in new_project.leaders
+        assert quit_leader not in new_project.leaders
+
+    def test_restart_without_carry_forward_starts_empty(self, organization, db_session):
+        project = ProjectFactory(organization=organization, status='Active')
+        leader = MemberFactory(organization=organization)
+        db_session.commit()
+        assign_member(project, leader, role='Leader')
+        close_project_for_year(project)
+
+        new_project = restart_project(project, carry_forward_people=False)
+
+        assert new_project.leaders == []
+        assert new_project.volunteers == []
+
+    def test_restart_rejects_project_that_already_has_a_next_cycle(self, organization, db_session):
+        project = ProjectFactory(organization=organization, status='Active')
+        db_session.commit()
+        close_project_for_year(project)
+        restart_project(project)
+
+        with pytest.raises(ProjectServiceError):
+            restart_project(project)
+
+
+@pytest.mark.integration
+class TestProjectLifecycleRoutes:
+    """HTTP-level coverage for the assignment/close/restart endpoints in
+    blueprints/project_routes.py."""
+
+    def test_end_assignment_route_requires_admin_or_treasurer(self, authenticated_client, organization, db_session):
+        """The default factory role is 'Member' -- it must be denied."""
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+        assignment = assign_member(project, member, role='Volunteer')
+
+        response = authenticated_client.post(
+            f'/projects/{project.id}/assignments/{assignment.id}/end',
+            data={'end_reason': 'Resigned'},
+        )
+
+        assert response.status_code == 302
+        db_session.refresh(assignment)
+        assert assignment.end_date is None  # not ended
+
+    def test_end_assignment_route_ends_assignment(self, admin_client, organization, db_session):
+        project = ProjectFactory(organization=organization)
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+        assignment = assign_member(project, member, role='Leader')
+
+        response = admin_client.post(
+            f'/projects/{project.id}/assignments/{assignment.id}/end',
+            data={'end_reason': 'Dismissed', 'end_notes': 'Policy violation'},
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 200
+        db_session.refresh(assignment)
+        assert assignment.end_reason == 'Dismissed'
+        assert assignment.end_date is not None
+
+    def test_end_assignment_route_rejects_assignment_from_other_org_project(self, admin_client, organization, db_session):
+        other_org = OrganizationFactory()
+        other_project = ProjectFactory(organization=other_org)
+        other_member = MemberFactory(organization=other_org)
+        db_session.commit()
+        other_assignment = assign_member(other_project, other_member, role='Leader')
+
+        response = admin_client.post(
+            f'/projects/{other_project.id}/assignments/{other_assignment.id}/end',
+            data={'end_reason': 'Dismissed'},
+        )
+
+        assert response.status_code == 404
+        db_session.refresh(other_assignment)
+        assert other_assignment.end_date is None
+
+    def test_close_route_closes_project(self, admin_client, organization, db_session):
+        project = ProjectFactory(organization=organization, status='Active')
+        member = MemberFactory(organization=organization)
+        db_session.commit()
+        assign_member(project, member, role='Volunteer')
+
+        response = admin_client.post(f'/projects/{project.id}/close', follow_redirects=True)
+
+        assert response.status_code == 200
+        db_session.refresh(project)
+        assert project.status == 'Completed'
+        assert project.active_assignments == []
+
+    def test_close_route_requires_admin_or_treasurer(self, authenticated_client, organization, db_session):
+        project = ProjectFactory(organization=organization, status='Active')
+        db_session.commit()
+
+        response = authenticated_client.post(f'/projects/{project.id}/close')
+
+        assert response.status_code == 302
+        db_session.refresh(project)
+        assert project.status == 'Active'
+
+    def test_restart_route_creates_next_year_project(self, admin_client, organization, db_session):
+        project = ProjectFactory(organization=organization, name='Fall Festival', status='Completed')
+        db_session.commit()
+
+        response = admin_client.post(
+            f'/projects/{project.id}/restart',
+            data={'start_date': '2027-02-01', 'carry_forward_people': 'on'},
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 200
+        new_project = Project.query.filter_by(
+            organization_id=organization.id, previous_project_id=project.id
+        ).first()
+        assert new_project is not None
+        assert new_project.name == 'Fall Festival'
+
+    def test_restart_route_requires_admin_or_treasurer(self, authenticated_client, organization, db_session):
+        project = ProjectFactory(organization=organization, status='Completed')
+        db_session.commit()
+
+        response = authenticated_client.get(f'/projects/{project.id}/restart')
+
+        assert response.status_code == 302
+        assert Project.query.filter_by(previous_project_id=project.id).first() is None
+
+M tests/integration/test_project_routes.py [blob cfeb5ebc88d09d218783f2eba9d312ea51a38608cb818f7cc60ba07bc0d30863 size=13043]
+

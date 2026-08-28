@@ -8,6 +8,11 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, Organization, Project, ChartOfAccounts
 from datetime import datetime
 from sqlalchemy import text, inspect
+from extensions import limiter
+from default_chart_of_accounts import DEFAULT_CHART_OF_ACCOUNTS
+from services.usage_service import log_event
+from audit_schema import install_audit_triggers
+from services.audit_context import set_current_actor
 
 # Create the blueprint
 auth_bp = Blueprint('auth', __name__)
@@ -16,6 +21,7 @@ auth_bp = Blueprint('auth', __name__)
 # ==================== AUTHENTICATION ====================
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     """Login page and handler"""
     if current_user.is_authenticated:
@@ -28,8 +34,25 @@ def login():
         
         if user and user.check_password(password):
             login_user(user)
+            # apply_audit_actor()'s before_request hook ran before this
+            # request knew who was logging in (current_user wasn't
+            # authenticated yet), so it set the actor contextvar to None.
+            # The User.query.filter_by(...) lookup above already opened
+            # this request's transaction under that None actor -- and
+            # audit_context's SET LOCAL is applied once, in
+            # SQLAlchemy's after_begin, when a transaction *begins*, not
+            # retroactively when the contextvar changes mid-transaction.
+            # So updating the contextvar here isn't enough on its own:
+            # the still-open transaction from the lookup query would
+            # carry the last_login UPDATE below and stay attributed to
+            # no one. Commit now (nothing pending yet, so this is just a
+            # clean transaction boundary) so the actor is set *before*
+            # the next transaction begins, then do the actual write.
+            set_current_actor(user.id)
+            db.session.commit()
             user.last_login = datetime.utcnow()
             db.session.commit()
+            log_event('auth.login', organization_id=user.organization_id, user_id=user.id)
             next_page = request.args.get('next')
             return redirect(next_page or url_for('index'))
         else:
@@ -55,6 +78,17 @@ def init_database(app):
     """Initialize database with default data"""
     with app.app_context():
         db.create_all()
+
+        # Install (or refresh) the audit trail's trigger function and
+        # per-table triggers now that audit_log and every audited table
+        # exist. Idempotent -- see audit_schema.py. Uses db.engine
+        # directly (not db.session) because this needs its own
+        # transaction wrapping DDL, run by whatever role this app
+        # context is connected as (the owner/migration role in a
+        # properly separated production deployment -- see
+        # docs/AUDIT_TRAIL.md).
+        with db.engine.begin() as connection:
+            install_audit_triggers(connection)
 
         # Ensure the users table has the `default_report_year` column; add it if missing
         try:
@@ -99,7 +133,25 @@ def init_database(app):
         except Exception as e:
             app.logger.exception(f'Could not inspect users table for default_report_year column: {e}')
             raise
-        
+
+        # Ensure the users table has the `must_change_password` column; add it if missing
+        try:
+            inspector = inspect(db.engine)
+            cols = [c['name'] for c in inspector.get_columns('users')]
+            if 'must_change_password' not in cols:
+                app.logger.info('users.must_change_password not found; attempting to add column')
+                dialect = db.engine.dialect.name
+                if dialect == 'postgresql' or dialect == 'mysql':
+                    alter_sql = "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE"
+                else:
+                    alter_sql = "ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0"
+                db.session.execute(text(alter_sql))
+                db.session.commit()
+                app.logger.info('Added users.must_change_password column')
+        except Exception as e:
+            app.logger.exception(f'Could not add users.must_change_password column: {e}')
+            raise
+
         # Create default organization if none exists
         if not Organization.query.first():
             org = Organization(
@@ -117,7 +169,8 @@ def init_database(app):
                 username='admin',
                 email='admin@example.com',
                 role='Admin',
-                organization_id=1
+                organization_id=1,
+                must_change_password=True,  # admin123 is a known default -- force a real one on first login
             )
             admin.set_password('admin123')
             db.session.add(admin)
@@ -134,66 +187,21 @@ def init_database(app):
             db.session.add(dues_project)
             db.session.commit()
         
-        # Create default Chart of Accounts if empty
+        # Create default Chart of Accounts if empty. DEFAULT_CHART_OF_ACCOUNTS
+        # is the same list init_db.py's create_complete_chart_of_accounts() uses
+        # -- this used to be a second, hand-copied, incomplete list that had
+        # drifted out of sync (missing accounts like 1410 Computer Equipment),
+        # which only surfaced once the test harness correctly loaded demo data
+        # against the same database whose Chart of Accounts this seeds.
         if ChartOfAccounts.query.count() == 0:
-            default_accounts = [
-                # Assets (add 1000 for tests)
-                ('1000', 'Cash', 'Asset', 'Cash', 'Debit'),
-                ('1010', 'Operating Checking Account', 'Asset', 'Cash', 'Debit'),
-                ('1020', 'Savings Account', 'Asset', 'Cash', 'Debit'),
-                ('1030', 'Petty Cash', 'Asset', 'Cash', 'Debit'),
-                ('1210', 'Accounts Receivable', 'Asset', 'Receivables', 'Debit'),
-                ('1510', 'Land', 'Asset', 'Fixed Assets', 'Debit'),
-                ('1520', 'Buildings', 'Asset', 'Fixed Assets', 'Debit'),
-                ('1530', 'Equipment & Furnishings', 'Asset', 'Fixed Assets', 'Debit'),
-                ('1590', 'Accumulated Depreciation', 'Asset', 'Contra-Asset', 'Credit'),
-                
-                # Liabilities (add 2000 for tests)
-                ('2000', 'Accounts Payable', 'Liability', 'Current Liability', 'Credit'),
-                ('2010', 'Accounts Payable', 'Liability', 'Current Liability', 'Credit'),
-                ('2020', 'Credit Card Payable', 'Liability', 'Current Liability', 'Credit'),
-                ('2110', 'Accrued Salaries', 'Liability', 'Accrued Liability', 'Credit'),
-                ('2510', 'Long-term Loans Payable', 'Liability', 'Long-term Liability', 'Credit'),
-                
-                # Net Assets (add 3000 for tests)
-                ('3000', 'Net Assets', 'Net Assets', 'Unrestricted', 'Credit'),
-                ('3100', 'Net Assets Without Donor Restrictions', 'Net Asset', 'Unrestricted', 'Credit'),
-                ('3200', 'Net Assets With Donor Restrictions - Time', 'Net Asset', 'Restricted', 'Credit'),
-                ('3210', 'Net Assets With Donor Restrictions - Purpose', 'Net Asset', 'Restricted', 'Credit'),
-                
-                # Revenue (add 4000 for tests)
-                ('4000', 'Revenue', 'Revenue', 'Contributions', 'Credit'),
-                ('4010', 'Individual Contributions', 'Revenue', 'Contributions', 'Credit'),
-                ('4020', 'Corporate Contributions', 'Revenue', 'Contributions', 'Credit'),
-                ('4030', 'Foundation Grants', 'Revenue', 'Grants', 'Credit'),
-                ('4110', 'Membership Dues', 'Revenue', 'Dues', 'Credit'),
-                ('4210', 'Special Event Revenue', 'Revenue', 'Events', 'Credit'),
-                ('4310', 'Program Service Fees', 'Revenue', 'Program Revenue', 'Credit'),
-                ('4410', 'Investment Income - Interest', 'Revenue', 'Investment Income', 'Credit'),
-                
-                # Expenses (add 5000 for tests)
-                ('5000', 'Expense', 'Expense', 'General', 'Debit'),
-                ('5010', 'Salaries & Wages', 'Expense', 'Personnel', 'Debit'),
-                ('5020', 'Payroll Taxes', 'Expense', 'Personnel', 'Debit'),
-                ('5110', 'Professional Fees', 'Expense', 'Administrative', 'Debit'),
-                ('5210', 'Occupancy - Rent', 'Expense', 'Occupancy', 'Debit'),
-                ('5220', 'Occupancy - Utilities', 'Expense', 'Occupancy', 'Debit'),
-                ('5310', 'Office Supplies', 'Expense', 'Administrative', 'Debit'),
-                ('5320', 'Program Supplies', 'Expense', 'Program Services', 'Debit'),
-                ('5410', 'Travel & Meetings', 'Expense', 'General', 'Debit'),
-                ('5510', 'Advertising & Promotion', 'Expense', 'Fundraising', 'Debit'),
-                ('5610', 'Insurance', 'Expense', 'Administrative', 'Debit'),
-                ('5710', 'Depreciation', 'Expense', 'Administrative', 'Debit'),
-                ('5810', 'Bank Fees', 'Expense', 'Administrative', 'Debit'),
-            ]
-            
-            for acc in default_accounts:
+            for acc in DEFAULT_CHART_OF_ACCOUNTS:
                 account = ChartOfAccounts(
                     account_number=acc[0],
                     account_name=acc[1],
                     account_type=acc[2],
                     account_subtype=acc[3],
-                    normal_balance=acc[4]
+                    normal_balance=acc[4],
+                    active=acc[5]
                 )
                 db.session.add(account)
             

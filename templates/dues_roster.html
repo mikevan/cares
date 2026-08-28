@@ -176,7 +176,10 @@ document.querySelectorAll('.dues-paid-cb').forEach(cb => {
 
         fetch('{{ url_for("members.dues_toggle") }}', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
             body: JSON.stringify({member_id: parseInt(memberId), year: YEAR, paid: paid})
         })
         .then(r => r.json())
@@ -226,7 +229,10 @@ function toggleTransaction() {
 
     fetch('{{ url_for("members.dues_toggle_transaction") }}', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
         body: JSON.stringify({member_id: parseInt(memberId), year: YEAR, include: include})
     })
     .then(r => r.json())

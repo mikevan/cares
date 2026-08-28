@@ -35,6 +35,19 @@
                     <div class="form-text">Letters and numbers only. Leave blank for default CARES branding.</div>
                 </div>
             </div>
+            <h5 class="mt-4 mb-3">Council Identity (Form 1295)</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="council_number" class="form-label">Council Number</label>
+                    <input type="text" class="form-control" id="council_number" name="council_number" value="{{ org.council_number if org else '' }}">
+                </div>
+                <div class="col-md-8 mb-3">
+                    <label for="district_deputy_name" class="form-label">District Deputy Name</label>
+                    <input type="text" class="form-control" id="district_deputy_name" name="district_deputy_name" value="{{ org.district_deputy_name if org else '' }}">
+                    <div class="form-text">Printed on the Form 1295 Schedules for District Deputy sign-off.</div>
+                </div>
+            </div>
+
             <div class="mb-3">
                 <label for="address" class="form-label">Address</label>
                 <input type="text" class="form-control" id="address" name="address" value="{{ org.address if org else '' }}">

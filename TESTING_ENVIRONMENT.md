@@ -8,6 +8,7 @@ This project uses a robust, isolated test harness to ensure reliable, repeatable
 - **Automated Data Loading:** Minimal, representative sample data is loaded after schema creation for each test run, ensuring all tests have the required context.
 - **Session-Scoped Fixtures:** Pytest fixtures manage app context, database sessions, and test data lifecycle.
 - **No Side Effects:** Tests are fully isolated; no persistent state or data leaks between tests.
+- **Data-loading helpers take the target app explicitly:** any script that seeds or wipes data (e.g. `load_comprehensive_data.py`) takes the Flask app to run against as a required, no-default argument. A prior version defaulted to importing the real app.py app directly; because Flask-SQLAlchemy resolves `db.session`'s bind from whichever app is current on the context stack, that default silently pointed the test harness's seeding at a developer's real local database instead of the disposable test container -- exactly the kind of production-data leak this file promises never happens. Keep new data-loading helpers to the same no-default-target rule.
 
 ## Test Organization & Philosophy
 - **One Test per Method/Function:** Each test function covers only one method or function.

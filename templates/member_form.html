@@ -52,7 +52,10 @@
                         {% if member %}
                         <div class="col-md-6 mb-3">
                             <div class="form-check mt-4">
-                                <input class="form-check-input" type="checkbox" id="active" name="active" {{ 'checked' if member.active else '' }}>
+                                <input class="form-check-input" type="checkbox" id="active" name="active"
+                                       data-initial-active="{{ '1' if member.active else '0' }}"
+                                       onchange="toggleMembershipEventPanel()"
+                                       {{ 'checked' if member.active else '' }}>
                                 <label class="form-check-label" for="active">
                                     Active Member
                                 </label>
@@ -60,6 +63,43 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% if member %}
+                    <div class="card bg-light mb-3" id="membership-event-panel" style="display: none;">
+                        <div class="card-body">
+                            <p class="text-muted mb-2">
+                                This member's status is changing. Recording a reason keeps the Form 1295
+                                Schedule A membership roll-forward accurate -- it's optional, but an
+                                unexplained change will show up as a reconciliation warning on that report.
+                            </p>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="membership_event_type" class="form-label">Reason for change</label>
+                                    <select class="form-select" id="membership_event_type" name="membership_event_type">
+                                        <option value="">-- Not specified --</option>
+                                        <optgroup label="Becoming active (additions)">
+                                            {% for event_type in membership_event_addition_types %}
+                                            <option value="{{ event_type }}">{{ event_type }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                        <optgroup label="Becoming inactive (deductions)">
+                                            {% for event_type in membership_event_deduction_types %}
+                                            <option value="{{ event_type }}">{{ event_type }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="membership_event_date" class="form-label">Effective date</label>
+                                    <input type="date" class="form-control" id="membership_event_date" name="membership_event_date">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="membership_event_notes" class="form-label">Notes (optional)</label>
+                                <textarea class="form-control" id="membership_event_notes" name="membership_event_notes" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="/members" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save Member</button>
@@ -69,4 +109,14 @@
         </div>
     </div>
 </div>
+{% if member %}
+<script>
+    function toggleMembershipEventPanel() {
+        var checkbox = document.getElementById('active');
+        var panel = document.getElementById('membership-event-panel');
+        var initialActive = checkbox.dataset.initialActive === '1';
+        panel.style.display = (checkbox.checked !== initialActive) ? 'block' : 'none';
+    }
+</script>
+{% endif %}
 {% endblock %}

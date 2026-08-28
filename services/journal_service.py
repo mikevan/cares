@@ -14,7 +14,8 @@ Future hook points (not yet implemented):
 
 from decimal import Decimal
 from datetime import date
-from models import db, JournalEntry, JournalEntryLine, ChartOfAccounts
+from models import db, JournalEntry, JournalEntryLine, ChartOfAccounts, Project
+from services.usage_service import log_event
 
 
 class JournalServiceError(Exception):
@@ -112,6 +113,13 @@ def post_entry(
         db.session.add(_build_line(entry.id, acct.id, debit, credit, line.get('memo', '')))
 
     db.session.commit()
+    project = Project.query.get(project_id)
+    log_event(
+        'journal_entry.posted',
+        organization_id=project.organization_id if project else None,
+        user_id=created_by,
+        meta={'entry_id': entry.id, 'status': status},
+    )
     return entry
 
 
@@ -188,6 +196,13 @@ def post_entry_from_account_ids(
         ))
 
     db.session.commit()
+    project = Project.query.get(project_id)
+    log_event(
+        'journal_entry.posted',
+        organization_id=project.organization_id if project else None,
+        user_id=created_by,
+        meta={'entry_id': entry.id, 'status': status},
+    )
     return entry
 
 
@@ -233,13 +248,18 @@ def post_simple_mode_entry(
     )
 
 
-def void_entry(entry_id: int, voided_by: int) -> JournalEntry:
+def void_entry(entry_id: int, voided_by: int, organization_id: int) -> JournalEntry:
     """
     Mark a journal entry as Voided.
     Does not reverse the entry — reversal is a separate operation.
-    Raises JournalServiceError if entry cannot be voided.
+    Raises JournalServiceError if entry cannot be voided or does not belong
+    to the calling organization (scoped via the entry's project, since
+    JournalEntry has no organization_id column of its own).
     """
-    entry = JournalEntry.query.get(entry_id)
+    entry = JournalEntry.query.join(Project).filter(
+        JournalEntry.id == entry_id,
+        Project.organization_id == organization_id
+    ).first()
     if not entry:
         raise JournalServiceError(f"Journal entry #{entry_id} not found.")
     if entry.status == 'Voided':

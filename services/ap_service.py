@@ -8,6 +8,7 @@ from decimal import Decimal
 from datetime import date
 from models import db, Vendor, Invoice, InvoicePayment
 from services.journal_service import post_simple_entry, JournalServiceError
+from services.usage_service import log_event
 
 AP_ACCOUNT  = '2110'   # Accounts Payable
 CASH_ACCOUNT = '1010'  # Operating Checking
@@ -74,6 +75,12 @@ def create_invoice(
     )
     db.session.add(invoice)
     db.session.commit()
+    log_event(
+        'ap.invoice_created',
+        organization_id=organization_id,
+        user_id=created_by,
+        meta={'invoice_id': invoice.id, 'amount': str(amount)},
+    )
     return invoice
 
 

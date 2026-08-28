@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Trustee Audit Report{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Trustee Audit Report</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <form method="POST" action="{{ url_for('audit.verify') }}" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-shield-check"></i> Verify Chain Integrity
+            </button>
+        </form>
+        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+</div>
+
+<div class="alert alert-secondary">
+    Every insert, edit, and delete to financial, membership, and access-control
+    records is recorded here automatically by the database itself -- not by
+    this application -- and cannot be altered or removed after the fact, even
+    by an administrator. This is meant to make the semi-annual trustee audit
+    of the financial secretary's and treasurer's books (Section 145) fast:
+    pick a date range below and every change in it is right here, with who
+    made it and exactly what changed.
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" action="{{ url_for('audit.log') }}" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label for="start_date" class="form-label mb-0">From</label>
+                <input type="date" class="form-control form-control-sm" id="start_date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="col-auto">
+                <label for="end_date" class="form-label mb-0">To</label>
+                <input type="date" class="form-control form-control-sm" id="end_date" name="end_date" value="{{ end_date }}">
+            </div>
+            <div class="col-auto">
+                <label for="table_name" class="form-label mb-0">Table</label>
+                <select class="form-select form-select-sm" id="table_name" name="table_name">
+                    <option value="">All tables</option>
+                    {% for t in filterable_tables %}
+                    <option value="{{ t }}" {% if t == table_filter %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if truncated %}
+<div class="alert alert-warning">
+    Showing the most recent 500 entries in this range. Narrow the date range or table filter to see the rest.
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body">
+        {% if not rows %}
+        <div class="alert alert-secondary text-center mb-0">
+            No changes recorded in this date range.
+        </div>
+        {% else %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>When</th>
+                        <th>Who</th>
+                        <th>Table</th>
+                        <th>Action</th>
+                        <th>Record</th>
+                        <th>What changed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="text-nowrap">{{ row.entry.changed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            {% if row.actor_name == 'System / Unknown' %}
+                                <span class="text-muted fst-italic">{{ row.actor_name }}</span>
+                            {% else %}
+                                {{ row.actor_name }}
+                            {% endif %}
+                        </td>
+                        <td>{{ row.entry.table_name }}</td>
+                        <td>
+                            {% if row.entry.operation == 'INSERT' %}
+                                <span class="badge bg-success">Created</span>
+                            {% elif row.entry.operation == 'UPDATE' %}
+                                <span class="badge bg-warning text-dark">Edited</span>
+                            {% else %}
+                                <span class="badge bg-danger">Deleted</span>
+                            {% endif %}
+                        </td>
+                        <td>#{{ row.entry.row_id }}</td>
+                        <td>
+                            {% if row.entry.operation == 'UPDATE' %}
+                                {% if row.diff %}
+                                    <ul class="mb-0 small">
+                                    {% for field, old_value, new_value in row.diff %}
+                                        <li><strong>{{ field }}</strong>: {{ old_value }} &rarr; {{ new_value }}</li>
+                                    {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <span class="text-muted small">No field-level changes detected</span>
+                                {% endif %}
+                            {% elif row.entry.operation == 'INSERT' %}
+                                <span class="text-muted small">
+                                    {% for k, v in (row.entry.new_data or {}).items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                </span>
+                            {% else %}
+                                <span class="text-muted small">
+                                    {% for k, v in (row.entry.old_data or {}).items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

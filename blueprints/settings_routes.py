@@ -28,6 +28,8 @@ def index():
         try:
             org.name = request.form['name']
             org.ein = request.form.get('ein')
+            org.council_number = request.form.get('council_number')
+            org.district_deputy_name = request.form.get('district_deputy_name')
             org.address = request.form.get('address')
             org.city = request.form.get('city')
             org.state = request.form.get('state')

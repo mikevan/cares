@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Restart Project{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Restart "{{ project.name }}" for the Next Cycle</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p>
+            This creates a <strong>new</strong> project for the next cycle, linked back to
+            <strong>{{ project.name }}</strong> ({{ project.start_date.strftime('%Y') if project.start_date else '' }}).
+            The original project and its budget, journal entries, and assignment history are left exactly as they are.
+        </p>
+        <form method="POST">
+            <div class="mb-3">
+                <label for="start_date" class="form-label">New Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" style="max-width: 220px;">
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="carry_forward_people" name="carry_forward_people" checked>
+                <label class="form-check-label" for="carry_forward_people">
+                    Carry forward leaders/volunteers whose term completed normally
+                    (anyone who resigned or was dismissed will not be carried forward automatically).
+                </label>
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{{ url_for('projects.view', id=project.id) }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-arrow-repeat"></i> Start Next Cycle
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

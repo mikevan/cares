@@ -302,6 +302,7 @@ def change_password(id):
             
             # Update password
             user.set_password(new_password)
+            user.must_change_password = False
             db.session.commit()
             
             flash('Password changed successfully!', 'success')

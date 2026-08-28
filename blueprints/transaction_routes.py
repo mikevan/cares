@@ -61,7 +61,10 @@ def list():
 @transactions_bp.route('/<int:id>')
 @login_required
 def view(id):
-    transaction = JournalEntry.query.get_or_404(id)
+    transaction = JournalEntry.query.join(Project).filter(
+        JournalEntry.id == id,
+        Project.organization_id == current_user.organization_id
+    ).first_or_404()
     lines = JournalEntryLine.query.filter_by(journal_entry_id=id).all()
     return render_template('transaction_view.html', transaction=transaction, lines=lines)
 
@@ -149,7 +152,7 @@ def _post_accountant():
 @admin_or_treasurer_required
 def void(id):
     try:
-        void_entry(id, voided_by=current_user.id)
+        void_entry(id, voided_by=current_user.id, organization_id=current_user.organization_id)
         flash('Transaction voided successfully!', 'success')
     except JournalServiceError as e:
         flash(str(e), 'error')

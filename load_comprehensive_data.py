@@ -19,7 +19,18 @@ DEMO SYSTEM: This loader always wipes and reloads on every startup.
 Preserved across restarts: organizations, chart_of_accounts, translation_cache.
 """
 
-from app import app, db
+# Imported as `_real_app` (not `app`) so that main()'s default only ever
+# points at the real dev/production app -- callers that need to load this
+# demo data into a *different* Flask app (e.g. the test harness's isolated
+# test-database app) pass it explicitly via main(target_app=...). Prior to
+# this, `with app.app_context():` inside main() always pushed a context for
+# THIS real app, so when the test suite imported and called main(), its
+# queries silently bound to the real DATABASE_URL (the developer's real
+# local Postgres, or whatever a deployment's DATABASE_URL points to)
+# instead of the ephemeral test container -- meaning every pytest run was
+# wiping and reloading demo data over the real database's transactional
+# tables (journal entries, members, projects, etc.).
+from app import app as _real_app, db
 from models import Organization, User, Project, Member, JournalEntry, JournalEntryLine, ChartOfAccounts
 from datetime import date
 from decimal import Decimal
@@ -91,10 +102,15 @@ def clear_existing_data():
     """
     print("  Clearing existing data for fresh demo load...")
 
-    # Delete in FK-safe order
+    # Delete in FK-safe order. membership_events and
+    # form_1295_submissions (added with the Form 1295 feature -- see
+    # models.py) must be cleared BEFORE members/users, or their foreign
+    # keys make those deletes fail.
     tables = [
         'journal_entry_lines',
         'donations',
+        'membership_events',
+        'form_1295_submissions',
         'member_dues_payments',
         'invoices',
         'journal_entries',
@@ -1014,8 +1030,19 @@ def load_2026(projects, members, user_id):
 
 # ==================== MAIN ====================
 
-def main():
-    with app.app_context():
+def main(target_app):
+    """Load demo data.
+
+    target_app is required, deliberately -- there is no default that falls
+    back to the real app.py app. This is a destructive loader
+    (clear_existing_data() deletes journal entries, members, projects,
+    donations, invoices, and non-admin users before reloading fiction over
+    them), so every call site must say out loud which database it means to
+    wipe. Standalone use (`python load_comprehensive_data.py`) passes
+    target_app=_real_app explicitly below; the test harness passes its own
+    isolated test-container app.
+    """
+    with target_app.app_context():
         print("\n" + "="*60)
         print("CARES Demo Data Loader")
         print("Fiscal Years 2025 (complete) + 2026 (YTD March)")
@@ -1060,4 +1087,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(target_app=_real_app)

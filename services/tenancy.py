@@ -72,6 +72,58 @@ def get_current_organization():
     return _current_org_id.get()
 
 
+def _settings_for_current_context():
+    """The two session-setting values for whatever context is set right now.
+
+    Postgres session settings are text, so the readable scope travels as a
+    comma-separated list that rls_schema.current_org_scope() parses back into
+    INTEGER[]. Empty means "no scope declared", which the policies treat as
+    the acting organization alone -- never as "everything".
+    """
+    org_id = _current_org_id.get()
+    scope = _current_org_scope.get()
+    if not scope and org_id is not None:
+        scope = [org_id]
+    return (
+        str(org_id) if org_id is not None else '',
+        ','.join(str(i) for i in scope) if scope else '',
+    )
+
+
+def _push(executor):
+    org_value, scope_value = _settings_for_current_context()
+    executor.execute(
+        text("SET LOCAL app.current_organization_id = :org_id"),
+        {'org_id': org_value},
+    )
+    executor.execute(
+        text("SET LOCAL app.current_organization_scope = :scope"),
+        {'scope': scope_value},
+    )
+
+
+def apply_to_open_transaction(session):
+    """Push the current context onto a transaction that is ALREADY open.
+
+    after_begin fires once, when a transaction starts, and never again --
+    so context established after the first query of a request would arrive
+    one transaction late and every RLS policy would compare against NULL.
+    That is not hypothetical: it is what made a production deployment
+    render as a completely empty application on its first request served
+    under the restricted runtime role.
+
+    The obvious repair -- commit, so the settings land on a fresh
+    transaction -- works but is a blunt instrument: commit expires every
+    object in the session, which breaks callers holding ORM instances
+    across the boundary. SET LOCAL on the open transaction achieves the
+    same thing with no side effects at all.
+
+    Safe to call repeatedly; SET LOCAL simply overwrites, and the values
+    are discarded when the transaction ends.
+    """
+    _push(session)
+
+
 @event.listens_for(Session, "after_begin")
 def _apply_organization_to_transaction(session, transaction, connection):
     """Push the organization into the session setting each RLS policy reads.
@@ -87,20 +139,4 @@ def _apply_organization_to_transaction(session, transaction, connection):
     before the first write, or commit first so the write lands in a fresh
     transaction that already carries it.
     """
-    org_id = _current_org_id.get()
-    connection.execute(
-        text("SET LOCAL app.current_organization_id = :org_id"),
-        {'org_id': str(org_id) if org_id is not None else ''},
-    )
-
-    # Postgres session settings are text, so the readable scope travels as a
-    # comma-separated list that rls_schema.current_org_scope() parses back
-    # into INTEGER[]. Empty means "no scope declared", which the policies
-    # treat as the acting organization alone -- never as "everything".
-    scope = _current_org_scope.get()
-    if not scope and org_id is not None:
-        scope = [org_id]
-    connection.execute(
-        text("SET LOCAL app.current_organization_scope = :scope"),
-        {'scope': ','.join(str(i) for i in scope) if scope else ''},
-    )
+    _push(connection)

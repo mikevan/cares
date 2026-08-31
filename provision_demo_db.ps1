@@ -288,10 +288,18 @@ $env:CARES_NEW_ADMIN_PASSWORD = $AdminPassword
 try {
     Invoke-PythonSnippet -Name 'set_admin_password' -Code @'
 import os
+import re
 import sys
 
 from app import app
 from models import db, User
+
+# Name the target before changing anything. DATABASE_URL falls back to a
+# localhost dev default when it is unset or empty, so a mistyped or cleared
+# variable silently edits a local database instead of the remote one, and
+# the output otherwise looks identical either way.
+print('  TARGET: %s' % re.sub(r'://([^:]+):[^@]+@', r'://\1:***@',
+                              app.config['SQLALCHEMY_DATABASE_URI']))
 
 password = os.environ['CARES_NEW_ADMIN_PASSWORD']
 
@@ -330,17 +338,31 @@ Assert-LastExitCode "setup_runtime_role.py"
 
 # ------------------------------------------------------------------
 Write-Section "Provisioning complete"
-Write-Host "Set these on the Render web service, then deploy:"
+Write-Host "Set exactly these four on the Render web service. No quotes around"
+Write-Host "the values, and watch for trailing spaces -- both break silently."
 Write-Host ""
 Write-Host "  DATABASE_URL          <INTERNAL url, owner credentials>"
 Write-Host "  RUNTIME_DATABASE_URL  <INTERNAL url, but user '$RuntimeRole' and"
 Write-Host "                         the runtime role password>"
 Write-Host "  SECRET_KEY            a 64-char hex value"
 Write-Host "  FLASK_ENV             production"
-Write-Host "  DEMO_MODE             true"
-Write-Host "  ENABLE_TRANSLATION    true"
-Write-Host "  GROQ_API_KEY          <key>"
 Write-Host ""
-Write-Host "Use the INTERNAL url on Render, not the external one used here."
-Write-Host "First login is 'admin' with the interim password, and it will"
-Write-Host "require a new password before anything else is reachable."
+Write-Host "Use the INTERNAL url on Render, not the external one used here, and"
+Write-Host "make sure the scheme is postgresql:// -- SQLAlchemy 2.x rejects the"
+Write-Host "shorter postgres:// form."
+Write-Host ""
+Write-Host "Do NOT set DEMO_MODE on the web service. Nothing in a serving"
+Write-Host "process reads it, so it buys nothing -- but if the start command is"
+Write-Host "ever changed to migrate_and_start.sh, DEMO_MODE=true is exactly what"
+Write-Host "makes that script wipe and reseed the database on every boot. On a"
+Write-Host "free instance that sleeps after 15 minutes, that is every boot."
+Write-Host "Leaving it unset makes demo_guard.py refuse instead."
+Write-Host ""
+Write-Host "Translation is off unless ENABLE_TRANSLATION=true and GROQ_API_KEY"
+Write-Host "are both set. Before enabling it, confirm DEFAULT_MODEL still exists"
+Write-Host "-- GET https://api.groq.com/openai/v1/models. Providers retire models,"
+Write-Host "and this one fails silently: the page just renders untranslated."
+Write-Host ""
+Write-Host "First login is 'admin' with the interim password. It forces a"
+Write-Host "password change before anything else is reachable, so do that once"
+Write-Host "now rather than in front of an audience."

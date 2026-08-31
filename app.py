@@ -26,7 +26,7 @@ from services.translation_service import translate_response, detect_language, SK
 from services.audit_context import set_current_actor, clear_current_actor
 from services.tenancy import (
     set_current_organization, set_current_organization_scope,
-    clear_current_organization,
+    clear_current_organization, apply_to_open_transaction,
 )
 from services.hierarchy import descendant_ids
 
@@ -228,12 +228,35 @@ def apply_tenant_context():
         return None
     org_id = current_user.organization_id
     set_current_organization(org_id)
+
+    # Push onto the transaction that is ALREADY open, rather than waiting
+    # for after_begin to fire on the next one.
+    #
+    # require_password_change() is registered before this handler and its
+    # first statement reads current_user, which fires Flask-Login's user
+    # loader -- the request's first query, and therefore the start of this
+    # request's transaction. tenancy.py pushes its settings on after_begin,
+    # so that transaction began carrying an EMPTY organization, and
+    # after_begin does not fire again when the context changes mid-way.
+    # Every later query in the request then ran with no tenant context, and
+    # RLS returned zero rows: correct behaviour, wrong cause. The entire
+    # application rendered as an empty database.
+    #
+    # Invisible in development and in the test suite, both of which connect
+    # as the table OWNER, which is exempt from its own tables' policies.
+    # It appears only under the restricted runtime role -- the configuration
+    # that actually matters.
+    apply_to_open_transaction(db.session)
+
     try:
         set_current_organization_scope(descendant_ids(org_id))
     except Exception:
         # A hierarchy lookup that fails must not widen visibility. Falling
         # back to None means "this organization only" (see tenancy.py).
         set_current_organization_scope(None)
+
+    # Again, because the scope was only known after descendant_ids() ran.
+    apply_to_open_transaction(db.session)
     return None
 
 

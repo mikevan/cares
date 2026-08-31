@@ -254,6 +254,46 @@ def app(postgres_container):
     def clear_audit_actor(exc=None):
         clear_current_actor()
 
+    # Mirror app.py's tenant-context hooks so tests exercise the same
+    # row-level-security plumbing production uses -- services/tenancy.py.
+    #
+    # These were absent until a deployment served its first request as a
+    # non-owner role and every RLS-protected table came back empty. The
+    # suite could not have caught it twice over: it connects as the table
+    # owner, which is exempt from the policies, and this fixture had no
+    # tenant hook to get wrong in the first place.
+    #
+    # Mirroring app.py's request wiring BY HAND is what allowed that drift.
+    # The durable fix is a single register_request_hooks(app) in app.py that
+    # both production and this fixture call, so a hook cannot exist in one
+    # and not the other. Until then, anything added to app.py's
+    # before_request chain must be copied here too.
+    from services.tenancy import (
+        set_current_organization, set_current_organization_scope,
+        clear_current_organization, apply_to_open_transaction,
+    )
+    from services.hierarchy import descendant_ids
+
+    @app.before_request
+    def apply_tenant_context():
+        if not current_user.is_authenticated:
+            set_current_organization(None)
+            set_current_organization_scope(None)
+            return None
+        org_id = current_user.organization_id
+        set_current_organization(org_id)
+        apply_to_open_transaction(db.session)
+        try:
+            set_current_organization_scope(descendant_ids(org_id))
+        except Exception:
+            set_current_organization_scope(None)
+        apply_to_open_transaction(db.session)
+        return None
+
+    @app.teardown_request
+    def clear_tenant_context(exc=None):
+        clear_current_organization()
+
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(members_bp)

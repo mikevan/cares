@@ -314,10 +314,15 @@ def clear_existing_data():
     print("  Clearing existing data for a fresh council demo load...")
     # FK-safe order: children before parents. invoice_payments and
     # receivable_payments must precede invoices/receivables, and
-    # project_assignments must precede projects, or those deletes fail on
-    # a foreign key. (The list this was copied from predates the AP demo
-    # data and omitted them, which only stayed harmless while nothing
-    # created an invoice_payments row.)
+    # project_assignments must precede BOTH projects and members -- it has a
+    # foreign key to each -- or those deletes fail. (The list this was copied
+    # from predates the AP demo data and omitted them, which only stayed
+    # harmless while nothing created an invoice_payments row. For the same
+    # reason project_assignments sat after members for as long as no loader
+    # created an assignment: the delete could not fail because there was
+    # never a row to violate the constraint. A failure here is quiet and
+    # destructive -- the except below rolls back every delete that already
+    # succeeded in this transaction and then carries on to the next table.)
     tables = [
         'journal_entry_lines',
         'donations',
@@ -333,8 +338,8 @@ def clear_existing_data():
         'journal_entries',
         'vendors',
         'donors',
-        'members',
         'project_assignments',
+        'members',
         'projects',
     ]
     for table in tables:
@@ -875,6 +880,90 @@ def create_projects(org, period_start):
 
 
 # ==================== SIX MONTHS OF TRANSACTIONS ====================
+
+def assign_project_leadership(org, projects, admin_id, period_start):
+    """Chairmen and volunteers -- including two terms that have already ended.
+
+    ProjectAssignment is a HISTORY table: it records why a term ended, not
+    merely that it did. Seeding only current assignments would exercise half
+    of it and produce a member page where every row reads "Current", which
+    demonstrates nothing. So one chairman stands down mid-period and is
+    replaced, and one volunteer resigns -- two different end reasons, both
+    dated inside the audit period rather than today.
+
+    Everything goes through services/project_service.py rather than
+    constructing rows directly. models.ProjectAssignment says that service is
+    the only thing that should write this table, and its idempotency is
+    exactly what a re-runnable loader wants: assigning the same member twice
+    returns the existing assignment instead of duplicating it.
+
+    Deliberately NOT using project_service.replace_leader(): it defaults both
+    the end date and the new start date to date.today(), which would put a
+    leadership change in August inside a book that closes on 30 June.
+    """
+    from services.project_service import assign_member, end_assignment
+
+    members = Member.query.filter_by(
+        organization_id=org.id, active=True
+    ).order_by(Member.id).all()
+    if len(members) < 16:
+        print("  ! Fewer than 16 active members -- leadership seeding skipped.")
+        return 0
+
+    created = 0
+    next_member = 0
+
+    def take():
+        nonlocal next_member
+        member = members[next_member]
+        next_member += 1
+        return member
+
+    # Standing council activities: one chairman each.
+    for name in ('Council Operations', 'Charitable Giving', 'Youth & Family Programs'):
+        assign_member(projects[name], take(), role='Leader',
+                      assigned_by=admin_id, start_date=period_start)
+        created += 1
+
+    # Fundraisers: a chairman plus two volunteers each.
+    raffle_chair = None
+    for name in ('Spring Raffle 2026', 'Pancake Breakfast 2026', 'Golf Outing 2026'):
+        chair = take()
+        assign_member(projects[name], chair, role='Leader',
+                      assigned_by=admin_id, start_date=period_start)
+        created += 1
+        if name == 'Spring Raffle 2026':
+            raffle_chair = chair
+        for _ in range(2):
+            assign_member(projects[name], take(), role='Volunteer',
+                          assigned_by=admin_id, start_date=period_start)
+            created += 1
+
+    # The raffle chairman stands down after the drawing and hands over. This
+    # is the row that makes a member's history panel worth opening: an ended
+    # term with a reason, sitting above the successor's current one.
+    outgoing = assign_member(projects['Spring Raffle 2026'], raffle_chair,
+                             role='Leader', assigned_by=admin_id,
+                             start_date=period_start)
+    end_assignment(outgoing, end_reason='Replaced', ended_by=admin_id,
+                   end_date=period_start + timedelta(days=45),
+                   end_notes='Stood down after the January drawing.')
+    assign_member(projects['Spring Raffle 2026'], take(), role='Leader',
+                  assigned_by=admin_id,
+                  start_date=period_start + timedelta(days=46))
+    created += 1
+
+    # A volunteer who resigned, so the history shows more than one reason.
+    resigned = assign_member(projects['Youth & Family Programs'], take(),
+                             role='Volunteer', assigned_by=admin_id,
+                             start_date=period_start)
+    end_assignment(resigned, end_reason='Resigned', ended_by=admin_id,
+                   end_date=period_start + timedelta(days=104),
+                   end_notes='Moved out of the parish.')
+    created += 1
+
+    return created
+
 
 def load_opening_balances(projects, user_id):
     """Council-scale opening position at 12/31/2025.
@@ -1453,6 +1542,11 @@ def main():
             print("Creating projects...")
             projects = create_projects(org, period_start)
             print(f"  {', '.join(projects)}")
+
+            print("Assigning chairmen and volunteers...")
+            assignments = assign_project_leadership(org, projects, admin.id, period_start)
+            print(f"  {assignments} assignment(s), including one chairman replaced")
+            print("  mid-period and one volunteer resigned -- so the history is real.")
 
             print("Posting opening balances at 12/31/2025...")
             load_opening_balances(projects, admin.id)

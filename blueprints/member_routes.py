@@ -13,7 +13,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 
 from models import (
-    db, Member, MemberDuesPayment, Organization, Project, ChartOfAccounts,
+    db, Member, MemberDuesPayment, Organization, Project, ProjectAssignment,
+    ChartOfAccounts,
     JournalEntry, JournalEntryLine, MembershipEvent, MEMBERSHIP_EVENT_TYPES,
     MEMBERSHIP_EVENT_ADDITION_TYPES, MEMBERSHIP_EVENT_DEDUCTION_TYPES,
 )
@@ -55,7 +56,36 @@ def list():
     if search:
         query = query.filter(Member.name.ilike(f'%{search}%'))
     members = query.order_by(Member.name).all()
-    return render_template('members.html', members=members, search=search)
+
+    # Every member's current assignments in ONE query, not one per member.
+    # This page renders the whole roster, so a per-row lookup would be a
+    # query per member -- the same O(n) round-trip pattern already noted
+    # against services/reports.py. Scoped through Project.organization_id,
+    # because that is where an assignment's tenancy actually lives.
+    assignment_rows = (
+        db.session.query(
+            ProjectAssignment.member_id, ProjectAssignment.role, Project.name
+        )
+        .join(Project, Project.id == ProjectAssignment.project_id)
+        .filter(
+            Project.organization_id == current_user.organization_id,
+            ProjectAssignment.end_date.is_(None),
+        )
+        .order_by(ProjectAssignment.role, Project.name)
+        .all()
+    )
+    assignments_by_member = {}
+    for member_id, role, project_name in assignment_rows:
+        assignments_by_member.setdefault(member_id, []).append(
+            {'role': role, 'project': project_name}
+        )
+
+    return render_template(
+        'members.html',
+        members=members,
+        search=search,
+        assignments_by_member=assignments_by_member,
+    )
 
 
 @members_bp.route('/new', methods=['GET', 'POST'])
@@ -142,9 +172,27 @@ def edit(id):
             flash(f'Error updating member: {str(e)}', 'error')
             db.session.rollback()
 
+    # Full assignment history, current first. ProjectAssignment is a history
+    # table by design -- it records why a term ended, not merely that it did --
+    # and until now nothing in the application ever showed that history back.
+    assignments = (
+        ProjectAssignment.query
+        .join(Project, Project.id == ProjectAssignment.project_id)
+        .filter(
+            ProjectAssignment.member_id == member.id,
+            Project.organization_id == current_user.organization_id,
+        )
+        .order_by(
+            ProjectAssignment.end_date.is_(None).desc(),
+            ProjectAssignment.start_date.desc(),
+        )
+        .all()
+    )
+
     return render_template(
         'member_form.html',
         member=member,
+        assignments=assignments,
         membership_event_addition_types=MEMBERSHIP_EVENT_ADDITION_TYPES,
         membership_event_deduction_types=MEMBERSHIP_EVENT_DEDUCTION_TYPES,
     )

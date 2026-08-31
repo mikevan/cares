@@ -109,6 +109,71 @@
         </div>
     </div>
 </div>
+
+{% if member %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Project Assignments</h5>
+            </div>
+            <div class="card-body">
+                {% if assignments %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th style="width: 110px;">Role</th>
+                                <th style="width: 120px;">From</th>
+                                <th style="width: 130px;">To</th>
+                                <th>Ended because</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in assignments %}
+                            <tr>
+                                <td><a href="{{ url_for('projects.view', id=assignment.project_id) }}">{{ assignment.project.name }}</a></td>
+                                <td><span class="badge {{ 'bg-primary' if assignment.role == 'Leader' else 'bg-secondary' }}">{{ assignment.role }}</span></td>
+                                <td>{{ assignment.start_date.strftime('%Y-%m-%d') if assignment.start_date else '-' }}</td>
+                                <td>
+                                    {% if assignment.end_date %}
+                                    {{ assignment.end_date.strftime('%Y-%m-%d') }}
+                                    {% else %}
+                                    <span class="badge bg-success">Current</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if assignment.end_reason %}
+                                    {{ assignment.end_reason }}
+                                    {% if assignment.end_notes %}
+                                    <div class="text-muted small">{{ assignment.end_notes }}</div>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted small mb-0 mt-3">
+                    Assignments are added and ended on the project itself. This is the
+                    record of what has happened, including terms that have already ended.
+                </p>
+                {% else %}
+                <p class="text-muted mb-0">
+                    This member holds no project assignments. Leaders and volunteers are
+                    added from a project&#39;s own page.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% if member %}
 <script>
     function toggleMembershipEventPanel() {

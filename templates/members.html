@@ -28,6 +28,7 @@
                         <th>Phone</th>
                         <th>City, State</th>
                         <th>Join Date</th>
+                        <th>Projects</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -40,6 +41,15 @@
                         <td>{{ member.phone or '-' }}</td>
                         <td>{{ member.city }}, {{ member.state }}</td>
                         <td>{{ member.join_date.strftime('%Y-%m-%d') if member.join_date else '-' }}</td>
+                        <td>
+                            {% set current = (assignments_by_member or {}).get(member.id, []) %}
+                            {% for assignment in current %}
+                            <span class="badge {{ 'bg-primary' if assignment.role == 'Leader' else 'bg-secondary' }} me-1"
+                                  title="{{ assignment.role }} - {{ assignment.project }}">{{ assignment.project }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endfor %}
+                        </td>
                         <td>
                             {% if member.active %}
                             <span class="badge bg-success">Active</span>

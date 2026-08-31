@@ -35,7 +35,7 @@ SUPPORTED_LANGUAGES = {
 }
 
 # Routes that are never translated (login page, the about page itself, etc.)
-SKIP_ROUTES = frozenset({'/login', '/logout', '/about-translation'})
+SKIP_ROUTES = frozenset({'/login', '/logout'})
 
 # HTML responses larger than this are returned as-is (safeguard against huge pages)
 MAX_HTML_CHARS = 100_000

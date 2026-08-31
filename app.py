@@ -21,7 +21,6 @@ from blueprints.project_routes import projects_bp
 from blueprints.report_routes import reports_bp
 from blueprints.settings_routes import settings_bp
 from blueprints.ap_routes import ap_bp
-from blueprints.translation_routes import translation_bp
 from blueprints.audit_routes import audit_bp
 from services.translation_service import translate_response, detect_language, SKIP_ROUTES
 from services.audit_context import set_current_actor, clear_current_actor
@@ -111,7 +110,6 @@ app.register_blueprint(projects_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(ap_bp)
-app.register_blueprint(translation_bp)
 app.register_blueprint(audit_bp)
 
 @login_manager.user_loader

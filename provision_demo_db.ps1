@@ -263,6 +263,28 @@ with conn.cursor() as cur:
         print('  %s  %-24s %6d  (expected at least %d)' % (status, label, actual, minimum))
         if actual < minimum:
             failed.append(label)
+
+    # A row with organization_id IS NULL belongs to nobody, and RLS omits it
+    # from every query the application makes -- permanently, and without an
+    # error. Reports that join through such a row silently report zero, so
+    # counts look right while amounts are wrong. Checked here because it is
+    # invisible from the application and obvious from the database.
+    print('')
+    for table in ('chart_of_accounts', 'journal_entries', 'journal_entry_lines',
+                  'members', 'projects', 'invoices', 'membership_events',
+                  'member_dues_payments'):
+        try:
+            cur.execute('SELECT count(*) FROM ' + table + ' WHERE organization_id IS NULL')
+            orphans = cur.fetchone()[0]
+        except Exception as exc:
+            conn.rollback()
+            print('  ....  %-24s org check skipped: %s' % (table, exc))
+            continue
+        if orphans:
+            print('  FAIL  %-24s %6d row(s) with NULL organization_id' % (table, orphans))
+            failed.append(table + ' (NULL organization_id)')
+        else:
+            print('  ok    %-24s all rows belong to an organization' % table)
 conn.close()
 
 if failed:

@@ -79,12 +79,18 @@ def check_demo_data_loaded():
     """
     return Project.query.first() is not None and JournalEntry.query.count() > 0
 
+def _default_organization_id():
+    org = Organization.query.first()
+    return org.id if org else None
+
+
 def create_complete_chart_of_accounts():
     """Create complete chart of accounts for nonprofit accounting"""
     print("Creating comprehensive chart of accounts...")
-    
+
     accounts = DEFAULT_CHART_OF_ACCOUNTS
-    
+    organization_id = _default_organization_id()
+
     for acc in accounts:
         # Check if account already exists
         existing = ChartOfAccounts.query.filter_by(account_number=acc[0]).first()
@@ -95,12 +101,55 @@ def create_complete_chart_of_accounts():
                 account_type=acc[2],
                 account_subtype=acc[3],
                 normal_balance=acc[4],
-                active=acc[5]
+                active=acc[5],
+                # chart_of_accounts is a DIRECT organization table: unlike
+                # journal entries or invoices it has no parent row to inherit
+                # from, so nothing sets this but the code that creates the
+                # account. Omitting it leaves organization_id NULL, and NULL
+                # is invisible to every RLS policy -- permanently, and in
+                # silence. See assign_accounts_to_organization() below.
+                organization_id=organization_id,
             )
             db.session.add(account)
-    
+
     db.session.commit()
     print(f"Chart of accounts created/updated with {len(accounts)} accounts.")
+
+
+def assign_accounts_to_organization():
+    """Give any organization-less account to the deployment's organization.
+
+    Runs unconditionally, including when the chart is already "complete",
+    because the damage this repairs is invisible from the application side.
+
+    How it happens: chart_of_accounts only gained organization_id when
+    multi-tenancy landed. migrate_production.py backfills the accounts that
+    IT adds, but it runs before this script seeds DEFAULT_CHART_OF_ACCOUNTS,
+    so the base accounts -- 1010 checking, 4110 dues revenue, the whole 5000
+    expense range -- were created afterwards with no organization at all.
+
+    The symptom is not an error. RLS simply omits those rows, so any query
+    that joins through chart_of_accounts silently loses the join and reports
+    zero: a Form 1295 showing 33 members paying $48 and $0.00 of dues
+    collected, project spend of $0.00 on every project, a checking balance
+    of $0.00 against real receipts. Every count correct, every amount wrong.
+    That is a far worse failure than a crash on a document a trustee signs.
+    """
+    organization_id = _default_organization_id()
+    if organization_id is None:
+        print("  ! No organization exists yet -- cannot assign accounts.")
+        return 0
+
+    orphans = ChartOfAccounts.query.filter_by(organization_id=None).all()
+    for account in orphans:
+        account.organization_id = organization_id
+    if orphans:
+        db.session.commit()
+        print(f"  + Assigned {len(orphans)} account(s) with no organization "
+              f"to organization {organization_id}.")
+    else:
+        print("  All accounts belong to an organization.")
+    return len(orphans)
 
 def init_database():
     """Initialize database with schema and default data"""
@@ -161,6 +210,10 @@ def init_database():
             print("✓ Chart of accounts created.\n")
         else:
             print("✓ Chart of accounts already complete.\n")
+
+        # Unconditional: an account can exist and still be invisible.
+        assign_accounts_to_organization()
+        print("")
         
         # Step 5: Load the selected demo dataset
         print("Step 5: Loading demo data...")

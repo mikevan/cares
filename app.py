@@ -25,6 +25,11 @@ from blueprints.translation_routes import translation_bp
 from blueprints.audit_routes import audit_bp
 from services.translation_service import translate_response, detect_language, SKIP_ROUTES
 from services.audit_context import set_current_actor, clear_current_actor
+from services.tenancy import (
+    set_current_organization, set_current_organization_scope,
+    clear_current_organization,
+)
+from services.hierarchy import descendant_ids
 
 IS_PRODUCTION = is_production()
 # Explicit opt-in, off by default: turning this on sends full rendered page
@@ -41,8 +46,27 @@ app.config.from_pyfile('config.py', silent=True)
 app.config['SECRET_KEY'] = resolve_secret(
     'SECRET_KEY', 'dev-secret-key-change-in-production', production=IS_PRODUCTION
 )
-app.config['SQLALCHEMY_DATABASE_URI'] = resolve_secret(
+# Two connections, two roles. See setup_runtime_role.py.
+#
+#   DATABASE_URL          owner. Runs migrations and DDL.
+#   RUNTIME_DATABASE_URL  restricted role. Serves requests.
+#
+# The split exists because a table's OWNER is not subject to that table's
+# row-level security policies, and because audit_log's tamper-resistance is
+# a REVOKE that does not apply to the owner either. An app connecting as the
+# owner keeps every screen working and silently has neither control.
+#
+# CARES_ADMIN_CONNECTION is set by migrate_production.py before it imports
+# this module, because migrations genuinely need the owner. It is not
+# something to set on a serving process.
+_ADMIN_CONNECTION = os.environ.get('CARES_ADMIN_CONNECTION', '').strip().lower() == 'true'
+_OWNER_DATABASE_URL = resolve_secret(
     'DATABASE_URL', 'postgresql://postgres:dev123@localhost/kofc_accounting', production=IS_PRODUCTION
+)
+_RUNTIME_DATABASE_URL = os.environ.get('RUNTIME_DATABASE_URL', '').strip()
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    _OWNER_DATABASE_URL if (_ADMIN_CONNECTION or not _RUNTIME_DATABASE_URL)
+    else _RUNTIME_DATABASE_URL
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -120,6 +144,105 @@ def apply_audit_actor():
     services/audit_context.py for how this reaches Postgres.
     """
     set_current_actor(current_user.id if current_user.is_authenticated else None)
+
+
+# Verified once, on the first request this process serves. Deliberately not
+# at import: the database may not be reachable yet on some deploy paths, and
+# a check that prevents the process from starting cannot report what it
+# found.
+_SECURITY_VERIFIED = {'done': False, 'report': None}
+
+
+def _run_security_check():
+    """Ask the database what protections actually apply to this connection.
+
+    In production a failure is fatal -- every request is refused -- because
+    the alternative is a council operating for months believing it has
+    isolation and an immutable audit trail while having neither. That is the
+    failure mode a treasurer discovers in a deposition, not in a log.
+
+    Outside production it warns once and continues, so development and the
+    demo keep working against a single owner connection exactly as before.
+    """
+    from services.security_check import verify_runtime_security, format_report
+
+    try:
+        with db.engine.connect() as connection:
+            report = verify_runtime_security(connection)
+    except Exception as exc:
+        app.logger.warning('Runtime security check could not run: %s', exc)
+        return None
+
+    _SECURITY_VERIFIED['report'] = report
+    if report['secure']:
+        app.logger.info('Runtime security verified: role %s, isolation enforced, '
+                        'audit_log immutable', report['role_name'])
+        return report
+
+    banner = ('\n' + '=' * 72 + '\n'
+              'RUNTIME SECURITY CHECK FAILED\n' + '=' * 72 + '\n'
+              + format_report(report) + '\n' + '=' * 72)
+    if IS_PRODUCTION:
+        app.logger.critical(banner)
+    else:
+        app.logger.warning(banner)
+    return report
+
+
+@app.before_request
+def enforce_runtime_security():
+    """Refuse to serve a production deployment without its controls."""
+    if not _SECURITY_VERIFIED['done']:
+        _SECURITY_VERIFIED['done'] = True
+        _run_security_check()
+
+    report = _SECURITY_VERIFIED['report']
+    if not IS_PRODUCTION or report is None or report.get('secure'):
+        return None
+    # 503, not 500: the application is fine, its configuration is not, and
+    # the distinction matters to whoever is paged.
+    return (render_template('security_misconfigured.html',
+                            findings=report.get('findings', [])), 503)
+
+
+@app.before_request
+def apply_tenant_context():
+    """Establish which organization this request writes to and which ones it
+    may read, before any query runs.
+
+    Ordering matters and is not obvious: this must land before the first
+    database read of the request, because services/tenancy.py pushes the
+    settings on `after_begin` -- when a transaction starts. Set the
+    organization after a query has already opened the transaction and the
+    settings arrive one transaction late, which is precisely the bug that
+    once left login's last_login update with no audit actor.
+
+    descendant_ids() runs one recursive query against `organizations` per
+    request. At the scale this is built for -- a national body, three states,
+    a hundred councils -- that is a hundred-odd rows and costs nothing. If a
+    much larger tree ever makes it show up in a profile, cache it on the
+    organization row and invalidate on parent_id change; do not move the
+    recursion into the RLS policy, where it would run per row.
+    """
+    if not current_user.is_authenticated:
+        set_current_organization(None)
+        set_current_organization_scope(None)
+        return None
+    org_id = current_user.organization_id
+    set_current_organization(org_id)
+    try:
+        set_current_organization_scope(descendant_ids(org_id))
+    except Exception:
+        # A hierarchy lookup that fails must not widen visibility. Falling
+        # back to None means "this organization only" (see tenancy.py).
+        set_current_organization_scope(None)
+    return None
+
+
+@app.teardown_request
+def clear_tenant_context(exc=None):
+    """Same reason as clear_audit_actor: worker threads outlive requests."""
+    clear_current_organization()
 
 
 @app.teardown_request

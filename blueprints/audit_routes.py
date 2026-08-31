@@ -16,20 +16,28 @@ in this app (e.g. settings_routes.py), rather than adding a new Trustee
 role -- see the V2 backlog for giving a council's actual trustees their
 own read-only access without full Admin rights.
 
-Deliberately NOT organization-scoped: V1 is single-chapter scope (see
-kofc-v2-backlog.md), so there is only ever one real chapter's data in a
-given deployment's database. Per-organization filtering of audit_log
-belongs with the rest of the multi-tenancy work in V2, once a second real
-organization actually needs to share a deployment.
+Organization-scoped as of V2. audit_log carries an organization_id written
+by the trigger from each audited row's own data, and every row on this
+report is filtered to the branch of the hierarchy the viewer sits in. The
+hash chain is partitioned the same way, so a council can verify its own
+history without reading -- or depending on -- any other council's rows.
+
+audit_log deliberately carries no RLS policy of its own (see rls_schema.py):
+an auditor investigating a cross-tenant incident must not be blocked by the
+mechanism they are investigating. That makes the filtering below the actual
+control, which is why it lives in collect_log_rows() -- the single function
+both the screen and the signed PDF read from -- rather than in either
+caller.
 """
 from collections import defaultdict
 from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from sqlalchemy import text
+from sqlalchemy import and_, or_, text
 
 from models import db, AuditLog, User
+from services.hierarchy import descendant_ids
 from services.kofc_form_1295 import (
     get_audit_period, schedule_a, schedule_b, schedule_c,
     get_submission, save_submission_explanations, attest_submission,
@@ -54,6 +62,24 @@ _DEFAULT_WINDOW_DAYS = 182
 
 # Rows shown on screen and listed on the PDF before truncating.
 _ROW_LIMIT = 500
+
+
+def _visible_organization_ids():
+    """The branch of the hierarchy this viewer's audit report covers.
+
+    Returns the acting organization plus everything below it, so a state
+    body reviewing its councils sees them and a council sees only itself.
+    Never returns an empty list for an authenticated user -- an empty scope
+    would read as "no filter" at the call sites and show everything.
+    """
+    org_id = getattr(current_user, 'organization_id', None)
+    if org_id is None:
+        return []
+    try:
+        ids = descendant_ids(org_id)
+    except Exception:
+        ids = []
+    return ids or [org_id]
 
 
 def _require_admin():
@@ -87,7 +113,7 @@ def _diff_fields(old_data, new_data):
     return changes
 
 
-def collect_log_rows(start_date, end_date, table_filter, limit):
+def collect_log_rows(start_date, end_date, table_filter, limit, organization_ids=None):
     """The rows behind both the screen and the PDF.
 
     Extracted so the printed Trustee Audit Report cannot drift from what
@@ -99,6 +125,15 @@ def collect_log_rows(start_date, end_date, table_filter, limit):
         # Inclusive of the whole end day, not just midnight.
         AuditLog.changed_at < end_date + timedelta(days=1),
     )
+    if organization_ids:
+        # Rows on the `organizations` table itself have no organization_id
+        # (they ARE the organization), so match those by row_id or a council
+        # would never see changes to its own registration details.
+        query = query.filter(or_(
+            AuditLog.organization_id.in_(organization_ids),
+            and_(AuditLog.table_name == 'organizations',
+                 AuditLog.row_id.in_(organization_ids)),
+        ))
     if table_filter:
         query = query.filter(AuditLog.table_name == table_filter)
     entries = query.order_by(AuditLog.changed_at.desc()).limit(limit).all()
@@ -117,7 +152,7 @@ def collect_log_rows(start_date, end_date, table_filter, limit):
     } for e in entries]
 
 
-def verify_chain():
+def verify_chain(organization_ids=None):
     """Recompute every row's hash and confirm every link, returning the
     result rather than flashing it.
 
@@ -128,30 +163,46 @@ def verify_chain():
     deletion point. Run over the whole table, not the report's date range
     -- a break anywhere invalidates everything after it.
     """
-    self_consistency_failures = db.session.execute(text("""
+    # Scope every check to the caller's branch of the hierarchy. Restricting
+    # the ROWS is safe for the chain check below because the window function
+    # partitions by organization_id: filtering out other organizations
+    # removes whole partitions, never a link from the middle of this one.
+    scope_clause = ''
+    params = {}
+    if organization_ids:
+        scope_clause = 'AND organization_id = ANY(:org_ids)'
+        params['org_ids'] = list(organization_ids)
+
+    self_consistency_failures = db.session.execute(text(f"""
         SELECT id, table_name, operation, changed_at
         FROM audit_log
         WHERE row_hash <> encode(digest(
             coalesce(prev_hash, '<genesis>') || '|' || table_name || '|' || operation || '|' ||
+            coalesce(organization_id::text, '<none>') || '|' ||
             coalesce(old_data::text, '') || '|' || coalesce(new_data::text, '') || '|' ||
             coalesce(changed_by_user_id::text, '<unknown>') || '|' || changed_at::text,
             'sha256'), 'hex')
+        {scope_clause}
         ORDER BY id
-    """)).fetchall()
+    """), params).fetchall()
 
-    chain_breaks = db.session.execute(text("""
+    chain_breaks = db.session.execute(text(f"""
         WITH ordered AS (
             SELECT id, table_name, operation, changed_at, prev_hash,
-                   lag(row_hash) OVER (ORDER BY id) AS expected_prev_hash
+                   lag(row_hash) OVER (PARTITION BY organization_id ORDER BY id)
+                       AS expected_prev_hash
             FROM audit_log
+            WHERE TRUE {scope_clause}
         )
         SELECT id, table_name, operation, changed_at
         FROM ordered
         WHERE prev_hash IS DISTINCT FROM expected_prev_hash
         ORDER BY id
-    """)).fetchall()
+    """), params).fetchall()
 
-    total_rows = db.session.execute(text("SELECT count(*) FROM audit_log")).scalar() or 0
+    total_rows = db.session.execute(
+        text(f"SELECT count(*) FROM audit_log WHERE TRUE {scope_clause}"), params
+    ).scalar() or 0
     return {
         'self_failures': len(self_consistency_failures),
         'chain_breaks': len(chain_breaks),
@@ -172,7 +223,9 @@ def log():
     end_date = _parse_date(request.args.get('end_date'), default_end)
     table_filter = request.args.get('table_name') or ''
 
-    rows = collect_log_rows(start_date, end_date, table_filter, _ROW_LIMIT)
+    org_scope = _visible_organization_ids()
+    rows = collect_log_rows(start_date, end_date, table_filter, _ROW_LIMIT,
+                            organization_ids=org_scope)
 
     return render_template(
         'audit_log.html',
@@ -199,7 +252,7 @@ def verify():
     if not _require_admin():
         return redirect(url_for('index'))
 
-    result = verify_chain()
+    result = verify_chain(_visible_organization_ids())
     if result['intact']:
         flash(f"Verified {result['total_rows']} audit log entries. The chain is intact -- "
               f"no row has been altered or removed since it was written.", 'success')
@@ -322,14 +375,16 @@ def log_pdf():
     end_date = _parse_date(request.args.get('end_date'), default_end)
     table_filter = request.args.get('table_name') or ''
 
-    rows = collect_log_rows(start_date, end_date, table_filter, _ROW_LIMIT)
+    org_scope = _visible_organization_ids()
+    rows = collect_log_rows(start_date, end_date, table_filter, _ROW_LIMIT,
+                            organization_ids=org_scope)
     buffer = build_audit_report_pdf(
         org=current_user.organization,
         rows=rows,
         period_start=start_date,
         period_end=end_date,
         table_filter=table_filter,
-        verification=verify_chain(),
+        verification=verify_chain(org_scope),
         generated_by=current_user.username,
         truncated=len(rows) == _ROW_LIMIT,
         row_limit=_ROW_LIMIT,

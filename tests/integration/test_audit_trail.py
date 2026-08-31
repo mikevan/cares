@@ -163,27 +163,31 @@ class TestRestrictedRuntimeRole:
 class TestChainVerification:
 
     def test_freshly_written_rows_verify_as_intact(self, db_session, organization):
+        """Verify through the application's own verifier, not a copy of it.
+
+        This test previously inlined its own recomputation of the hash
+        payload and its own chain-link check. Both went stale when
+        audit_trigger_fn() moved to per-organization chains: the payload
+        gained an organization_id segment and prev_hash began being read
+        from the writing row's own organization partition. A second copy of
+        a calculation is how the contra-asset bug got reintroduced in
+        schedule_c(); calling verify_chain() means there is exactly one
+        definition of what "intact" means, and it is the one the Trustee
+        Audit Report and the signed PDF both read from.
+        """
+        # Imported inside the test deliberately: no other test module
+        # imports a blueprint at module scope, and this keeps collection
+        # of this file independent of blueprint import order.
+        from blueprints.audit_routes import verify_chain
+
         UserFactory(organization=organization)
         db_session.commit()
 
-        failures = db_session.execute(text("""
-            SELECT id FROM audit_log
-            WHERE row_hash <> encode(digest(
-                coalesce(prev_hash, '<genesis>') || '|' || table_name || '|' || operation || '|' ||
-                coalesce(old_data::text, '') || '|' || coalesce(new_data::text, '') || '|' ||
-                coalesce(changed_by_user_id::text, '<unknown>') || '|' || changed_at::text,
-                'sha256'), 'hex')
-        """)).fetchall()
-        assert failures == []
-
-        breaks = db_session.execute(text("""
-            WITH ordered AS (
-                SELECT id, prev_hash, lag(row_hash) OVER (ORDER BY id) AS expected_prev_hash
-                FROM audit_log
-            )
-            SELECT id FROM ordered WHERE prev_hash IS DISTINCT FROM expected_prev_hash
-        """)).fetchall()
-        assert breaks == []
+        result = verify_chain()
+        assert result['total_rows'] > 0, (
+            'the factory write above should have produced audit rows: %r' % (result,))
+        assert result['intact'], (
+            'freshly written rows failed verification: %r' % (result,))
 
 
 @pytest.mark.integration

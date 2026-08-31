@@ -5,9 +5,18 @@ Safe to run multiple times (idempotent structural changes).
 Demo behavior: org settings preserved, admin user reset fresh every run.
 """
 
+# Migrations run DDL -- CREATE TRIGGER, ALTER TABLE, CREATE POLICY -- which
+# only the table owner may do. Set BEFORE importing app, because app.py
+# chooses its connection URL at import time and there is no supported way to
+# rebind Flask-SQLAlchemy's engine afterwards.
+#
+# This is the one process that should ever set this.
+import os
+os.environ['CARES_ADMIN_CONNECTION'] = 'true'
+
 from app import app, db
 from demo_guard import demo_reset_allowed, demo_reset_refusal_message
-from models import ChartOfAccounts, JournalEntry, JournalEntryLine, Project, ProjectAssignment, Member, MembershipEvent
+from models import ChartOfAccounts, JournalEntry, JournalEntryLine, Project, ProjectAssignment, Member, MembershipEvent, Organization
 from datetime import datetime
 from sqlalchemy import inspect, text
 
@@ -460,6 +469,117 @@ def fix_depreciation_entries():
 
 # ==================== INTEGRITY & SUMMARY ====================
 
+def install_row_level_security():
+    """Install organization isolation at the database layer.
+
+    Runs AFTER ensure_default_organization() because the backfill needs an
+    organization to attribute pre-multi-tenancy rows to, and after every
+    column migration because the policies reference columns those add.
+
+    Idempotent by construction (see rls_schema.install_rls), so this runs on
+    every startup like the rest of this file. Failure is reported but not
+    fatal: a deployment that cannot install policies is a deployment that
+    behaves exactly as it did before multi-tenancy, and refusing to boot a
+    council's books over it would be the wrong trade.
+    """
+    print("\nStep 7: Installing row-level security...")
+    try:
+        from rls_schema import install_rls, backfill_organization_ids, verify_isolation
+    except ImportError as e:
+        print(f"  ! rls_schema unavailable: {e}")
+        return
+    default_org = Organization.query.order_by(Organization.id).first()
+    if default_org is None:
+        print("  ! No organization exists yet; skipping")
+        return
+
+    # Release every lock the earlier migration steps are still holding
+    # before asking for ACCESS EXCLUSIVE. Their reads left this session
+    # idle-in-transaction; without this commit the DDL below would queue
+    # behind locks held by the very session issuing it.
+    db.session.commit()
+
+    try:
+        # db.session's own connection -- NOT db.engine.begin(), which opens a
+        # second one that then waits on the first. See this file's history:
+        # the demo loader hung the same way on DROP TRIGGER.
+        connection = db.session.connection()
+
+        # Fail loudly rather than silently, if some OTHER session (a psql
+        # window, a second worker) holds a conflicting lock. Postgres blocks
+        # indefinitely by default and reports nothing while it does.
+        connection.execute(text("SET LOCAL lock_timeout = '15s'"))
+
+        install_rls(connection)
+        backfill_organization_ids(connection, default_org.id)
+        report = verify_isolation(connection)
+        db.session.commit()
+        unprotected = report.get('unprotected_tables') or []
+        if unprotected:
+            print(f"  ! Tables without an active policy: {', '.join(unprotected)}")
+        else:
+            print(f"OK Policies active on {len(report['tables'])} table(s)")
+        if report.get('connected_as_owner'):
+            # Not a warning to fix here -- migrations MUST run as the owner.
+            # It is a warning about how the app itself connects: an app
+            # running as the owner bypasses every policy above, which makes
+            # this whole mechanism decorative. See grant_restricted_runtime_role.
+            print("  ! App connects as the table owner; policies are bypassed "
+                  "at runtime until a restricted role is used")
+    except Exception as e:
+        db.session.rollback()
+        if 'lock timeout' in str(e).lower() or 'canceling statement' in str(e).lower():
+            print("  ! Timed out waiting for a table lock. Something else holds an")
+            print("    open transaction on an audited table -- a psql session, a")
+            print("    running app worker, or an idle connection. Close it and")
+            print("    re-run; row-level security is not installed.")
+        else:
+            print(f"  ! Could not install row-level security: {e}")
+
+
+def verify_runtime_role():
+    """Check the role the APPLICATION will serve requests as.
+
+    Not the role running this script. This process is connected as the owner
+    on purpose -- it has to be, to run DDL -- so checking its own connection
+    would always report the same failure and teach everyone to ignore it.
+
+    When RUNTIME_DATABASE_URL is unset the app serves as the owner, which is
+    correct for development and for the demo and wrong for a council's live
+    books. Said plainly here rather than discovered later.
+    """
+    print("\nStep 8: Verifying the application's runtime database role...")
+    from demo_guard import is_production
+    from services.security_check import verify_runtime_security, format_report
+    from sqlalchemy import create_engine
+
+    runtime_url = os.environ.get('RUNTIME_DATABASE_URL', '').strip()
+    if not runtime_url:
+        if is_production():
+            print("  ! RUNTIME_DATABASE_URL is not set. The application would")
+            print("    serve requests as the table owner, which bypasses every")
+            print("    organization isolation policy and can rewrite audit")
+            print("    history. Run: python setup_runtime_role.py --role cares_app")
+        else:
+            print("  - RUNTIME_DATABASE_URL not set; app will use the owner")
+            print("    connection. Fine for development and the demo; not for a")
+            print("    council's live books.")
+        return
+
+    engine = create_engine(runtime_url)
+    try:
+        with engine.connect() as connection:
+            report = verify_runtime_security(connection)
+        print(format_report(report))
+        if not report['secure'] and is_production():
+            print("\n  ! This deployment will refuse requests until the runtime")
+            print("    role is corrected. See setup_runtime_role.py.")
+    except Exception as e:
+        print(f"  ! Could not connect as the runtime role: {e}")
+    finally:
+        engine.dispose()
+
+
 def verify_database_integrity():
     print("\nStep 6: Verifying database integrity...")
     critical = ['1010', '1590', '3100', '4010', '5010', '5810']
@@ -520,7 +640,11 @@ def main():
             fix_account_names()
             fix_depreciation_entries()
 
+            # Multi-tenancy
+            install_row_level_security()
+
             # Verify and summarise
+            verify_runtime_role()
             verify_database_integrity()
             show_summary()
 

@@ -293,7 +293,8 @@ class Project(db.Model):
     # (see services/kofc_form_1295.py) can identify "the two largest
     # fundraisers by name" for a given audit period without guessing from
     # the project name or account activity.
-    is_fundraiser = db.Column(db.Boolean, default=False, nullable=False)
+    is_fundraiser = db.Column(db.Boolean, default=False,
+                              server_default=db.text('false'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Self-referential link: each year's re-run of a recurring project (e.g.
@@ -341,6 +342,10 @@ class ChartOfAccounts(db.Model):
     __tablename__ = 'chart_of_accounts'
     
     id = db.Column(db.Integer, primary_key=True)
+    # Set by the application, not derived: an account has no parent row to
+    # take an organization from. Required for the RLS policy's WITH CHECK to
+    # pass on insert -- see rls_schema.py.
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True)
     account_number = db.Column(db.String(10), nullable=False, unique=True)
     account_name = db.Column(db.String(200), nullable=False)
     account_type = db.Column(db.String(50), nullable=False)
@@ -406,6 +411,11 @@ class Donor(db.Model):
     state = db.Column(db.String(50))
     zip_code = db.Column(db.String(20))
     tax_id = db.Column(db.String(20))
+    # Donors had NO organization of any kind -- not even indirectly -- while
+    # carrying tax_id, which for an individual donor is a Social Security
+    # Number. In a shared deployment that is one global donor list. Added
+    # here before a second council exists, which is the only cheap moment.
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True)
     donor_type = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -889,6 +899,14 @@ class AuditLog(db.Model):
     # the trigger captured at the time regardless of what happens to that
     # user afterward.
     changed_by_user_id = db.Column(db.Integer, nullable=True)
+    # Which organization's hash chain this row belongs to. Written by
+    # audit_trigger_fn() from the audited row's OWN organization_id -- never
+    # from session state, because a row's owner is a property of the data.
+    # Deliberately no ForeignKey, for the same reason changed_by_user_id has
+    # none: the audit trail must survive the deletion of anything it
+    # references. NULL means the audited table has no organization of its
+    # own (organizations itself), which shares a single chain.
+    organization_id = db.Column(db.Integer, nullable=True, index=True)
     db_role = db.Column(db.String(64), nullable=False)
     changed_at = db.Column(db.DateTime(timezone=True), nullable=False)
     prev_hash = db.Column(db.String(64), nullable=True)

@@ -48,6 +48,7 @@ import os
 import sys
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import ProgrammingError
 
 from audit_schema import grant_restricted_runtime_role
 from services.security_check import verify_runtime_security, format_report
@@ -120,7 +121,48 @@ def main():
 
             # Belt and braces: neither attribute is granted above, but a
             # pre-existing role of the same name might carry them.
-            connection.execute(text(f'ALTER ROLE {role} NOSUPERUSER NOBYPASSRLS'))
+            #
+            # Only a SUPERUSER may set or clear the SUPERUSER and BYPASSRLS
+            # attributes -- even to values a role already holds. On every
+            # managed Postgres (Render, RDS, Cloud SQL, Neon, Azure) the
+            # owning role is not a superuser, so this ALTER is refused; and
+            # because it runs inside engine.begin(), an unguarded failure
+            # rolls back the role and every grant above it.
+            #
+            # So attempt it in a savepoint, and if it is refused for want of
+            # privilege, VERIFY the two attributes instead of asserting them.
+            # That is stronger, not weaker: it checks what is actually true
+            # of the role rather than trusting that a statement did what it
+            # claimed. A role created by a non-superuser cannot carry either
+            # attribute, so the normal path passes; a pre-existing role that
+            # does carry one is named and refused, which is the case the
+            # belt-and-braces line existed for.
+            try:
+                with connection.begin_nested():
+                    connection.execute(text(f'ALTER ROLE {role} NOSUPERUSER NOBYPASSRLS'))
+            except ProgrammingError as exc:
+                if 'permission denied' not in str(exc).lower():
+                    raise
+                print('   ALTER ROLE refused (this connection is not a superuser)'
+                      ' -- verifying the attributes directly instead.')
+
+            attributes = connection.execute(text(
+                'SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = :name'
+            ), {'name': args.role}).first()
+            if attributes is None:
+                raise RuntimeError(
+                    f'role {args.role} does not exist after creation -- refusing to '
+                    f'report success.')
+            if attributes.rolsuper or attributes.rolbypassrls:
+                held = ' and '.join(
+                    name for name, flag in (('SUPERUSER', attributes.rolsuper),
+                                            ('BYPASSRLS', attributes.rolbypassrls)) if flag)
+                raise RuntimeError(
+                    f'role {args.role} holds {held}, and this connection cannot clear '
+                    f'it. Row-level security policies would not apply to the '
+                    f'application, and app.py would refuse to serve in production. '
+                    f'Drop and recreate the role, or clear the attribute as a '
+                    f'superuser, then run this again.')
         print(f'OK Role {args.role} created/updated and granted.')
     except Exception as e:
         print(f'\nERROR: could not create the role: {e}')

@@ -4,7 +4,7 @@ Automatic page translation via Groq API with PostgreSQL caching.
 
 Requires:
   - GROQ_API_KEY environment variable
-  - GROQ_TRANSLATION_MODEL environment variable (optional, defaults to llama-3.1-8b-instant)
+  - GROQ_TRANSLATION_MODEL environment variable (optional; see DEFAULT_MODEL below)
   - 'requests' package (pip install requests)
   - TranslationCache model in models.py
 """
@@ -41,7 +41,23 @@ SKIP_ROUTES = frozenset({'/login', '/logout'})
 MAX_HTML_CHARS = 100_000
 
 GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+# Model providers retire models, and this one fails SILENTLY when they do:
+# _call_groq()'s exception handler logs and returns None, translate_response()
+# then returns the untranslated page, and the only symptom is that nothing is
+# translated. llama-3.3-70b-versatile and llama-3.1-8b-instant -- the previous
+# value and the one the docstring named -- were both gone from Groq's model
+# list by August 2026.
+#
+# openai/gpt-oss-20b was chosen over gpt-oss-120b and qwen3.8-27b by testing
+# the actual job: translate a page while preserving tags, CSS classes, href
+# values, currency amounts and proper nouns. qwen3.8-27b translated an
+# organization's name ('Bishop Kelley Council' -> 'Consejo Bishop Kelley'),
+# which is disqualifying for financial documents. Both gpt-oss models passed;
+# 20b is cheaper and lower-latency, which matters because this runs
+# synchronously in an after_request hook and the API bill goes to the chapter.
+#
+# Verify with: GET https://api.groq.com/openai/v1/models
+DEFAULT_MODEL = 'openai/gpt-oss-20b'
 
 
 # ---------------------------------------------------------------------------

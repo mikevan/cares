@@ -1,53 +1,72 @@
 <#
 .SYNOPSIS
-    Provision a complete CARES / REGALIA demo database from an empty one.
+    Provision a complete CARES / REGALIA demo database from nothing.
 
 .DESCRIPTION
-    Rebuilds an entire demo deployment against a fresh PostgreSQL database:
-    schema, row-level security, audit triggers, the Knights of Columbus
-    council book, the restricted runtime role, and a non-default admin
-    password.
+    Rebuilds an entire demo deployment against a PostgreSQL database:
+    schema dropped and recreated, migrations applied, chart of accounts and
+    council demo data loaded, admin password set to a non-default value,
+    and the restricted runtime role created.
 
-    Written for Render's free Postgres, which expires 30 days after creation
-    and is then DELETED rather than suspended. When that happens the recovery
-    procedure is: create a new database, run this script against it, update
-    two environment variables on the web service. That is all. The demo loader
-    anchors open-invoice due dates to date.today(), so a rebuilt book is
-    correctly aged on whatever day it is rebuilt -- a re-seed produces a
-    fresher demo, not a staler one.
+    This is the remote counterpart of demo_kofc.ps1. That script rebuilds a
+    local Docker database and uses `docker exec psql`; this one targets a
+    managed database reachable only over the network, so every step runs
+    through Python and psycopg2 instead. The SEQUENCE is deliberately the
+    same as demo_kofc.ps1's, because that sequence is the one that works:
 
-    THE ORDERING IS DELIBERATE, NOT INCIDENTAL
-    ------------------------------------------
-    migrate_production.py seeds admin/admin123 (published in a public repo),
-    and load_kofc_form1295_demo_data.py then CLEARS that account's forced
-    password change -- get_admin_user() calls clear_demo_password_change_prompt()
-    on any admin it finds. So a database that has been migrated and seeded is
-    sitting on a publicly documented credential with no forced rotation.
+        drop schema -> migrate_production.py -> init_db.py
 
-    The admin password is therefore set LAST, after the loader, and this whole
-    script is meant to run BEFORE the web service that exposes the database to
-    the internet exists. admin123 should never be reachable from a public URL,
-    not even briefly.
+    init_db.py is not optional and not interchangeable with calling the
+    demo loader directly. It seeds DEFAULT_CHART_OF_ACCOUNTS and installs
+    the audit triggers, THEN dispatches to the loader named by
+    DEMO_DATASET. Calling load_kofc_form1295_demo_data.py on its own leaves
+    the base accounts (1010, 3100, 4010, 5010, 5810) missing and the loader
+    dies partway through posting opening balances.
+
+    Written for Render's free Postgres, which is DELETED 30 days after
+    creation rather than suspended. When that happens the recovery is:
+    create a new database, run this against it, update two environment
+    variables on the web service. The demo loader anchors open-invoice due
+    dates to date.today(), so a rebuilt book is correctly aged on whatever
+    day it is rebuilt.
+
+    TWO THINGS THIS SCRIPT WORKS AROUND
+    -----------------------------------
+    1. load_kofc_form1295_demo_data.py catches every exception in main(),
+       prints a traceback, and returns normally -- so the process exits 0
+       even when the load failed completely. Exit codes cannot be trusted
+       here, so step 4 asks the database whether the book actually exists.
+
+    2. migrate_production.py seeds admin/admin123, and the loader then
+       CLEARS that account's forced password change (get_admin_user ->
+       clear_demo_password_change_prompt). Both credentials are published
+       in a public repository, so the admin password is set AFTER the load,
+       and this whole script is meant to run BEFORE the web service that
+       exposes this database to the internet exists.
 
 .PARAMETER DatabaseUrl
-    The database's EXTERNAL connection string, with owner credentials. Render
-    shows this on the database's own page. The Internal URL is only reachable
-    from inside Render and will not work from a workstation.
+    The database's EXTERNAL connection string with owner credentials.
+    Render shows this on the database's own page. The Internal URL is only
+    reachable from inside Render and will not work from a workstation.
 
 .PARAMETER AdminPassword
     Interim password for the 'admin' account. The account keeps
-    must_change_password = True, so the first real login must choose its own
-    password; this value only needs to survive until then.
+    must_change_password = True, so the first real login has to choose its
+    own; this value only needs to survive until then.
 
 .PARAMETER RuntimeRolePassword
-    Password for the restricted role the web service connects as. Long-lived:
-    it goes into RUNTIME_DATABASE_URL on Render. This role owns no tables and
-    holds no SUPERUSER or BYPASSRLS, which is what makes the row-level security
-    policies and the audit_log REVOKE actually apply.
+    Password for the restricted role the web service connects as. Put this
+    somewhere you can retrieve it -- it goes into RUNTIME_DATABASE_URL on
+    Render, and the only way to recover it is to rerun setup_runtime_role.py
+    with a new one.
+
+.PARAMETER KeepSchema
+    Skip the drop/recreate and migrate in place. Against the standing
+    convention that a demo database is rebuilt from nothing, hence a flag.
 
 .EXAMPLE
     .\provision_demo_db.ps1 `
-        -DatabaseUrl "postgresql://cares_owner:PW@dpg-xxxx.virginia-postgres.render.com/cares" `
+        -DatabaseUrl $env:RENDER_DB `
         -AdminPassword "<interim>" `
         -RuntimeRolePassword "<long-lived>"
 #>
@@ -56,6 +75,7 @@ param(
     [Parameter(Mandatory = $true)][string] $AdminPassword,
     [Parameter(Mandatory = $true)][string] $RuntimeRolePassword,
     [string] $RuntimeRole = 'cares_app',
+    [switch] $KeepSchema,
     [switch] $Force
 )
 
@@ -65,9 +85,9 @@ Set-Location -Path $PSScriptRoot
 function Write-Section {
     param([string] $Text)
     Write-Host ""
-    Write-Host "============================================================"
-    Write-Host $Text
-    Write-Host "============================================================"
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host $Text -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
 }
 
 function Assert-LastExitCode {
@@ -77,20 +97,43 @@ function Assert-LastExitCode {
     }
 }
 
+function Invoke-PythonSnippet {
+    <# Run a Python snippet with the repo root on sys.path.
+
+       The snippet goes to a temp file rather than being piped to `python -`,
+       because piping to a native command's stdin from PowerShell is not
+       something to rely on. PYTHONPATH is set because a script executed from
+       %TEMP% gets %TEMP% as sys.path[0], so `from app import app` would fail
+       with ModuleNotFoundError. #>
+    param([string] $Name, [string] $Code)
+    $temp = Join-Path $env:TEMP "cares_$Name.py"
+    Set-Content -Path $temp -Value $Code -Encoding ASCII
+    try {
+        python $temp
+        Assert-LastExitCode $Name
+    }
+    finally {
+        Remove-Item $temp -ErrorAction SilentlyContinue
+    }
+}
+
 # ------------------------------------------------------------------
-# Confirmation. This script DESTROYS data -- the demo loader wipes
-# before it seeds and truncates audit_log. The whole point of
-# demo_guard.py is that a destructive reset should never be one
-# mistyped argument away from a council's real books, so show the
-# operator exactly which host is about to be rebuilt.
+# Confirmation. Everything below destroys data. demo_guard.py exists
+# because a destructive reset should never be one mistyped argument
+# away from a council's real books, so show which host is about to be
+# rebuilt before doing anything.
 # ------------------------------------------------------------------
 $redacted = $DatabaseUrl -replace '://([^:]+):[^@]+@', '://$1:********@'
 Write-Section "CARES demo database provisioning"
 Write-Host "Target: $redacted"
 Write-Host ""
-Write-Host "This DESTROYS all existing data in that database:"
-Write-Host "  - transactional data is wiped and reseeded by the demo loader"
-Write-Host "  - audit_log is TRUNCATEd, discarding all existing history"
+if ($KeepSchema) {
+    Write-Host "Schema will be KEPT (-KeepSchema). Demo data is still replaced."
+} else {
+    Write-Host "This DESTROYS everything in that database:"
+    Write-Host "  - DROP SCHEMA public CASCADE: tables, sequences, triggers, extensions"
+    Write-Host "  - all data, including the entire audit log"
+}
 Write-Host ""
 if (-not $Force) {
     $answer = Read-Host "Type REBUILD to continue"
@@ -103,50 +146,147 @@ if (-not $Force) {
 # ------------------------------------------------------------------
 # Environment
 #
-# FLASK_ENV is deliberately cleared: demo_guard.py refuses destructive
-# resets when FLASK_ENV=production and DEMO_MODE is not 'true', and the
-# loaders are destructive by design.
+# FLASK_ENV is cleared: demo_guard.py refuses destructive resets when
+# FLASK_ENV=production and DEMO_MODE is not 'true', and every loader
+# below is destructive by design.
 #
-# RUNTIME_DATABASE_URL is cleared so app.py resolves to DATABASE_URL --
-# every step here needs the OWNER connection. Migrations need it for DDL,
-# and the loader needs TRUNCATE on audit_log, which the restricted role
-# is specifically denied.
+# RUNTIME_DATABASE_URL is cleared so app.py resolves to DATABASE_URL.
+# Every step here needs the OWNER connection: DDL for migrations, and
+# TRUNCATE on audit_log for the loader -- which the restricted role is
+# specifically denied.
 #
-# PYTHONIOENCODING is set because migrate_production.py and the loaders
-# print check marks, and Windows' cp1252 console encoding raises
-# UnicodeEncodeError on them -- a known, previously-hit failure in this
-# repository.
+# PYTHONIOENCODING is set because these scripts print check marks and
+# Windows' cp1252 console encoding raises UnicodeEncodeError on them.
+#
+# PYTHONPATH lets a script in %TEMP% import this repository's modules.
 # ------------------------------------------------------------------
 $env:DATABASE_URL     = $DatabaseUrl
 $env:DEMO_MODE        = 'true'
 $env:DEMO_DATASET     = 'kofc'
 $env:PYTHONIOENCODING = 'utf-8'
+$env:PYTHONPATH       = $PSScriptRoot
 Remove-Item Env:\FLASK_ENV            -ErrorAction SilentlyContinue
 Remove-Item Env:\RUNTIME_DATABASE_URL -ErrorAction SilentlyContinue
 
 # ------------------------------------------------------------------
-# 1. Schema, row-level security, audit triggers
+# 1. Reset the schema
+#
+# DROP SCHEMA rather than deleting rows, for demo_kofc.ps1's reason:
+# DELETE leaves sequences, triggers, extensions and any table a loader
+# does not know about. pgcrypto and the audit triggers are reinstalled
+# on the way back up by audit_schema.install_audit_triggers().
+#
+# PostgreSQL 15+ no longer grants CREATE on a fresh public schema to
+# PUBLIC, so the grants are restored explicitly.
 # ------------------------------------------------------------------
-Write-Section "Step 1 of 4: Schema, RLS and audit triggers"
+if ($KeepSchema) {
+    Write-Section "Step 1 of 6: Schema reset SKIPPED (-KeepSchema)"
+} else {
+    Write-Section "Step 1 of 6: Dropping and recreating the public schema"
+    Invoke-PythonSnippet -Name 'reset_schema' -Code @'
+import os
+import psycopg2
+
+conn = psycopg2.connect(os.environ['DATABASE_URL'])
+conn.autocommit = True
+with conn.cursor() as cur:
+    cur.execute('DROP SCHEMA public CASCADE')
+    cur.execute('CREATE SCHEMA public')
+    cur.execute('GRANT ALL ON SCHEMA public TO CURRENT_USER')
+    cur.execute('GRANT ALL ON SCHEMA public TO PUBLIC')
+    cur.execute('SELECT current_user')
+    print('  schema public recreated, owned by %s' % cur.fetchone()[0])
+conn.close()
+'@
+}
+
+# ------------------------------------------------------------------
+# 2. Tables, columns, organization, admin, RLS policies
+# ------------------------------------------------------------------
+Write-Section "Step 2 of 6: migrate_production.py"
+Write-Host "Expect a warning that RLS policies are bypassed because this"
+Write-Host "connection owns the tables. True right now; step 6 is the fix."
 python migrate_production.py
 Assert-LastExitCode "migrate_production.py"
 
 # ------------------------------------------------------------------
-# 2. The council book
+# 3. Chart of accounts, audit triggers, and the council book
+#
+# NOT the loader directly. init_db.py seeds DEFAULT_CHART_OF_ACCOUNTS
+# and installs the audit triggers before dispatching to the loader named
+# by DEMO_DATASET. Skipping it leaves accounts 1010/3100/4010/5010/5810
+# missing and the loader fails posting opening balances.
 # ------------------------------------------------------------------
-Write-Section "Step 2 of 4: Knights of Columbus demo data"
-python load_kofc_form1295_demo_data.py
-Assert-LastExitCode "load_kofc_form1295_demo_data.py"
+Write-Section "Step 3 of 6: init_db.py (chart of accounts + DEMO_DATASET=kofc)"
+python init_db.py
+Assert-LastExitCode "init_db.py"
 
 # ------------------------------------------------------------------
-# 3. Admin password
+# 4. Verify the load actually happened
 #
-# After the loader, never before: get_admin_user() clears
+# The loader swallows every exception in main() and returns normally, so
+# the process exits 0 whether it succeeded or died halfway through
+# posting opening balances. Ask the database instead.
+# ------------------------------------------------------------------
+Write-Section "Step 4 of 6: Verifying the demo book"
+Invoke-PythonSnippet -Name 'verify_load' -Code @'
+import os
+import sys
+
+import psycopg2
+
+CHECKS = [
+    ('base chart of accounts',
+     "SELECT count(*) FROM chart_of_accounts "
+     "WHERE account_number IN ('1010','3100','4010','5010','5810')", 5),
+    ('chart of accounts total', 'SELECT count(*) FROM chart_of_accounts', 40),
+    ('members',                 'SELECT count(*) FROM members', 30),
+    ('projects',                'SELECT count(*) FROM projects', 5),
+    ('journal entries',         'SELECT count(*) FROM journal_entries', 100),
+    ('invoices',                'SELECT count(*) FROM invoices', 20),
+    ('audit log rows',          'SELECT count(*) FROM audit_log', 100),
+]
+
+conn = psycopg2.connect(os.environ['DATABASE_URL'])
+failed = []
+with conn.cursor() as cur:
+    for label, sql, minimum in CHECKS:
+        try:
+            cur.execute(sql)
+            actual = cur.fetchone()[0]
+        except Exception as exc:
+            conn.rollback()
+            print('  FAIL  %-24s query failed: %s' % (label, exc))
+            failed.append(label)
+            continue
+        status = 'ok  ' if actual >= minimum else 'FAIL'
+        print('  %s  %-24s %6d  (expected at least %d)' % (status, label, actual, minimum))
+        if actual < minimum:
+            failed.append(label)
+conn.close()
+
+if failed:
+    print('')
+    print('The demo load did not complete. Failing checks: %s' % ', '.join(failed))
+    print('Scroll up to step 3 -- the loader prints its traceback but still')
+    print('exits 0, so its own exit code did not report this.')
+    sys.exit(1)
+
+print('')
+print('  Demo book verified.')
+'@
+
+# ------------------------------------------------------------------
+# 5. Admin password
+#
+# After the load, never before: get_admin_user() clears
 # must_change_password on whatever admin it finds, so a password set
 # earlier would be left unprotected by the seed step.
 # ------------------------------------------------------------------
-Write-Section "Step 3 of 4: Admin password"
-$setAdminPassword = @'
+Write-Section "Step 5 of 6: Admin password"
+$env:CARES_NEW_ADMIN_PASSWORD = $AdminPassword
+try {
+    Invoke-PythonSnippet -Name 'set_admin_password' -Code @'
 import os
 import sys
 
@@ -162,54 +302,45 @@ with app.app_context():
         sys.exit(1)
     for user in admins:
         user.set_password(password)
-        # Kept True on purpose. The interim password above exists only to
-        # keep a publicly documented default off a public URL; the first
-        # real login still has to choose its own.
+        # Kept True deliberately. The interim password exists only to keep
+        # a publicly documented default off a public URL; the first real
+        # login still has to choose its own.
         user.must_change_password = True
         print('  reset: %s (must_change_password = True)' % user.username)
     db.session.commit()
-    print('OK   %d admin account(s) updated' % len(admins))
+    print('  %d admin account(s) updated' % len(admins))
 '@
-$env:CARES_NEW_ADMIN_PASSWORD = $AdminPassword
-$tempScript = Join-Path $env:TEMP 'cares_set_admin_password.py'
-Set-Content -Path $tempScript -Value $setAdminPassword -Encoding ASCII
-try {
-    python $tempScript
-    Assert-LastExitCode "admin password reset"
 }
 finally {
-    Remove-Item $tempScript                      -ErrorAction SilentlyContinue
-    Remove-Item Env:\CARES_NEW_ADMIN_PASSWORD    -ErrorAction SilentlyContinue
+    Remove-Item Env:\CARES_NEW_ADMIN_PASSWORD -ErrorAction SilentlyContinue
 }
 
 # ------------------------------------------------------------------
-# 4. Restricted runtime role
+# 6. Restricted runtime role
 #
-# Last, so its GRANT ON ALL TABLES covers the finished schema. The script
-# verifies the role owns nothing and holds neither SUPERUSER nor BYPASSRLS
-# before it exits -- if that check fails, the web service must not be
-# pointed at this database in production, because app.py will refuse to
-# serve and return 503 on every request.
+# Last, so GRANT ON ALL TABLES covers the finished schema. The script
+# verifies the role owns nothing and holds neither SUPERUSER nor
+# BYPASSRLS before exiting. If that verdict is not clean, do not point a
+# FLASK_ENV=production web service at this database -- app.py will
+# refuse to serve and return 503 on every request.
 # ------------------------------------------------------------------
-Write-Section "Step 4 of 4: Restricted runtime role '$RuntimeRole'"
+Write-Section "Step 6 of 6: Restricted runtime role '$RuntimeRole'"
 python setup_runtime_role.py --role $RuntimeRole --password $RuntimeRolePassword
 Assert-LastExitCode "setup_runtime_role.py"
 
 # ------------------------------------------------------------------
-# What to do next
-# ------------------------------------------------------------------
 Write-Section "Provisioning complete"
 Write-Host "Set these on the Render web service, then deploy:"
 Write-Host ""
-Write-Host "  DATABASE_URL          <INTERNAL url from Render, owner credentials>"
-Write-Host "  RUNTIME_DATABASE_URL  <same INTERNAL url, but user '$RuntimeRole'"
-Write-Host "                         and the runtime role password>"
-Write-Host "  SECRET_KEY            python -c `"import secrets; print(secrets.token_hex(32))`""
+Write-Host "  DATABASE_URL          <INTERNAL url, owner credentials>"
+Write-Host "  RUNTIME_DATABASE_URL  <INTERNAL url, but user '$RuntimeRole' and"
+Write-Host "                         the runtime role password>"
+Write-Host "  SECRET_KEY            a 64-char hex value"
 Write-Host "  FLASK_ENV             production"
 Write-Host "  DEMO_MODE             true"
 Write-Host "  ENABLE_TRANSLATION    true"
 Write-Host "  GROQ_API_KEY          <key>"
 Write-Host ""
 Write-Host "Use the INTERNAL url on Render, not the external one used here."
-Write-Host "First login is 'admin' with the interim password; it will require"
-Write-Host "a new password before anything else can be reached."
+Write-Host "First login is 'admin' with the interim password, and it will"
+Write-Host "require a new password before anything else is reachable."

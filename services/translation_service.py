@@ -143,7 +143,8 @@ RESPONSE_BUDGET_SECONDS = 600
 # reads everything and is asked to write back one slice of it. That the page
 # sits at the front of the prompt means every batch after the first reuses it
 # as a cached prefix, so the extra calls cost far less than they look.
-SEGMENT_BATCH_SIZE = 150
+SEGMENT_BATCH_SIZE = 75
+MIN_SEGMENT_BATCH = 20
 REVIEW_MIN_SECONDS = 45
 
 # A dropped numbered line or a mangled placeholder is a coin flip, not a
@@ -600,6 +601,54 @@ def _page_preamble(marked_html: str) -> str:
     return f'PAGE:\n{marked_html}\n\n'
 
 
+def _translate_batch(marked, language_name, batch, total, route, language_code,
+                     started, report, depth=0):
+    """Translate one batch, halving it if the model balks. Returns {index: text}.
+
+    150 markers in one request drew a flat refusal in production -- "I'm sorry,
+    but I can't provide that" -- on two pages, twice each, while the 34-marker
+    batch beside it succeeded. The line is somewhere below 150 and nobody knows
+    where, so the batch finds it: a request the model will not attempt is split
+    and asked again, down to MIN_SEGMENT_BATCH.
+
+    Guessing a smaller constant would work until a page grew, or a model
+    changed, and then fail the same way with no signal.
+    """
+    wanted = set(batch)
+    chunk = _call_groq(
+        _segment_translation_prompt(marked, language_name, batch, total),
+        timeout=min(_timeout_for(marked), 120),
+        report=report,
+    )
+    got = parse_response(_strip_markdown_fences(chunk), wanted, require_all=False) or {} if chunk else {}
+
+    if len(got) >= len(wanted) / 2:
+        return got
+
+    head = _strip_markdown_fences(chunk or '').strip()[:200].replace('\n', ' | ')
+    if chunk:
+        report['response_head'] = head
+
+    if len(batch) <= MIN_SEGMENT_BATCH or depth >= 4 or _budget_left(started) < RETRY_MIN_SECONDS:
+        current_app.logger.warning(
+            f'{route} ({language_code}): batch #{batch[0]}-{batch[-1]} '
+            f'({len(batch)} strings) returned {len(got)} and cannot be split '
+            f'further. It began: {head!r}'
+        )
+        return got
+
+    mid = len(batch) // 2
+    current_app.logger.info(
+        f'{route} ({language_code}): batch #{batch[0]}-{batch[-1]} returned '
+        f'{len(got)} of {len(wanted)}; splitting. It began: {head!r}'
+    )
+    merged = _translate_batch(marked, language_name, batch[:mid], total, route,
+                              language_code, started, report, depth + 1)
+    merged.update(_translate_batch(marked, language_name, batch[mid:], total, route,
+                                   language_code, started, report, depth + 1))
+    return merged
+
+
 def _batches(indices) -> list:
     """Marker numbers, in order, in chunks small enough to be answered."""
     ordered = sorted(indices)
@@ -800,37 +849,11 @@ def _segment_attempt(marked, masked_html, segments, expected, tokens, counts, cs
     # 'returned 210 of 213 strings, missing 47, 48, 49' is a diagnosis;
     # 'not translated' is a shrug.
     partial = {}
-    raw = ''
     for batch in batches:
-        wanted = set(batch)
-        prompt = _segment_translation_prompt(marked, language_name, batch, len(expected))
+        partial.update(_translate_batch(marked, language_name, batch, len(expected),
+                                        route, language_code, started, report))
 
-        # Retry the BATCH, not the page. A refusal or a short answer is that
-        # one call's problem; re-running the other four to get at it wastes the
-        # budget and the money, and a page with 683 strings has enough batches
-        # that one bad roll should not condemn the rest.
-        for batch_attempt in range(1, MAX_TRANSLATION_ATTEMPTS + 1):
-            chunk = _call_groq(prompt, timeout=min(_timeout_for(marked), 120), report=report)
-            if not chunk:
-                got = {}
-                break
-            raw = chunk
-            got = parse_response(_strip_markdown_fences(chunk), wanted, require_all=False) or {}
-            if len(got) >= len(wanted) / 2:
-                break
-            head = _strip_markdown_fences(chunk).strip()[:300].replace('\n', ' | ')
-            current_app.logger.warning(
-                f'{route} ({language_code}): batch #{batch[0]}-{batch[-1]} returned '
-                f'{len(got)} of {len(wanted)} strings on attempt {batch_attempt}. '
-                f'It began: {head!r}'
-            )
-            report['response_head'] = head
-            if batch_attempt == MAX_TRANSLATION_ATTEMPTS or _budget_left(started) < RETRY_MIN_SECONDS:
-                break
-
-        partial.update(got)
-
-    if not partial and not raw:
+    if not partial:
         return None
     missing = sorted(expected - set(partial))
     if missing:

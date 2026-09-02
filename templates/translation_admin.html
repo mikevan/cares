@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+
+{% block title %}Site Translation{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Site Translation</h1>
+    <span class="text-muted">{{ route_count }} page{{ '' if route_count == 1 else 's' }} available to translate</span>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Translating a page takes tens of seconds and happens while the reader waits. Running it
+    here makes <strong>you</strong> the first reader instead of your audience — afterwards every
+    view of these pages in these languages is served from the cache.
+    This does not depend on your browser's language setting.
+    <br><span class="small">When a page finishes, its name below becomes a link that opens the
+    translated version in a new tab &mdash; also independent of your browser's language.</span>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Languages</h5>
+        <p class="text-muted small mb-3">
+            Pick the languages the demo will actually use. Each one is a full pass over every page.
+        </p>
+
+        <div class="row" id="languageGrid">
+            {% for code, name in languages %}
+            <div class="col-md-4 col-lg-3 mb-2">
+                <div class="form-check">
+                    <input class="form-check-input lang-check" type="checkbox"
+                           value="{{ code }}" id="lang-{{ code }}">
+                    <label class="form-check-label" for="lang-{{ code }}">
+                        {{ name }} <span class="text-muted">({{ code }})</span>
+                        {% set done = cached_counts.get(code, 0) %}
+                        {% if done %}
+                            <br><span class="badge bg-success-subtle text-success-emphasis">{{ done }} / {{ route_count }} cached</span>
+                        {% endif %}
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <hr>
+
+        <div class="row align-items-end">
+            <div class="col-md-3 mb-2">
+                <label for="concurrency" class="form-label">Pages at once</label>
+                <select id="concurrency" class="form-select">
+                    <option value="1">1 — slowest, gentlest</option>
+                    <option value="2" selected>2 — recommended</option>
+                    <option value="3">3 — may hit rate limits</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="reviewPass" checked>
+                    <label class="form-check-label" for="reviewPass">
+                        Accounting review pass
+                        <br><span class="text-muted small">Second call per page. Better terminology, twice the time.</span>
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-5 mb-2">
+                <div id="estimate" class="text-muted">Select at least one language.</div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button id="startBtn" class="btn btn-primary" disabled>
+                <i class="bi bi-translate"></i> Translate
+            </button>
+            <button id="stopBtn" class="btn btn-outline-secondary d-none">
+                <i class="bi bi-stop-circle"></i> Stop
+            </button>
+            <button id="clearBtn" class="btn btn-outline-danger float-end" disabled>
+                <i class="bi bi-trash"></i> Clear cache for selected
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3 d-none" id="progressCard">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">
+                <span class="spinner-border spinner-border-sm text-primary me-2" id="spinner" role="status"></span>
+                <span id="phaseLabel">Translating…</span>
+            </h5>
+            <span class="d-flex align-items-center gap-2">
+                <span class="text-muted me-2" id="counts">0 / 0</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Filter results">
+                    <button type="button" class="btn btn-outline-secondary active"
+                            data-filter="all">All <span class="badge bg-secondary" id="countAll">0</span></button>
+                    <button type="button" class="btn btn-outline-success"
+                            data-filter="cached">Cached <span class="badge bg-success" id="countCached">0</span></button>
+                    <button type="button" class="btn btn-outline-danger"
+                            data-filter="failed">Failed <span class="badge bg-danger" id="countFailed">0</span></button>
+                </div>
+                <button id="csvBtn" class="btn btn-sm btn-outline-secondary" disabled>
+                    <i class="bi bi-download"></i> CSV
+                </button>
+            </span>
+        </div>
+
+        <div class="progress mb-2" style="height: 22px;">
+            <div id="progressBar"
+                 class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width: 0%;">0%</div>
+        </div>
+
+        <div class="d-flex justify-content-between small text-muted">
+            <span id="elapsed">Elapsed 0:00</span>
+            <span id="remaining">Estimating…</span>
+        </div>
+
+        <div id="summary" class="mt-3 d-none"></div>
+
+        <div class="table-responsive mt-3" style="max-height: 340px; overflow-y: auto;">
+            <table class="table table-sm table-striped mb-0">
+                <thead class="table-light" style="position: sticky; top: 0;">
+                    <tr><th>Page</th><th>Language</th><th>Result</th><th class="text-end">Time</th></tr>
+                </thead>
+                <tbody id="logBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h6 class="card-title">
+            <a class="text-decoration-none" data-bs-toggle="collapse" href="#routeList" role="button">
+                <i class="bi bi-chevron-right"></i> Pages included ({{ route_count }})
+            </a>
+        </h6>
+        <div class="collapse" id="routeList">
+            <p class="text-muted small">
+                Every page reachable without picking a specific record. Member, project and
+                transaction detail pages are deliberately excluded — translating those would
+                mean one translation per database row.
+            </p>
+            <ul class="list-unstyled small mb-0" style="column-count: 2;">
+                {% for r in routes %}<li><code>{{ r }}</code></li>{% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    // Assume this until the run measures its own average. Two Groq calls per
+    // page -- translate, then the accounting review pass.
+    var SECONDS_PER_PAGE_WITH_REVIEW = 40;
+    var SECONDS_PER_PAGE_NO_REVIEW = 20;
+
+    function assumedSeconds() {
+        return document.getElementById('reviewPass').checked
+            ? SECONDS_PER_PAGE_WITH_REVIEW : SECONDS_PER_PAGE_NO_REVIEW;
+    }
+
+    var routes = {{ routes | tojson }};
+    var running = false, stopRequested = false;
+    var completed = 0, total = 0, startedAt = 0, durations = [], activeWorkers = 1;
+    var rows = [];   // every finished result, in completion order, for the CSV
+    var currentFilter = 'all';
+    var pausedUntil = 0;   // rate-limit backoff, shared by all workers
+    var throttled = false; // dropped to one at a time after a rate limit
+    var tally = { cached: 0, failed: 0, skipped: 0 };
+
+    var startBtn = document.getElementById('startBtn');
+    var stopBtn = document.getElementById('stopBtn');
+    var clearBtn = document.getElementById('clearBtn');
+    var progressCard = document.getElementById('progressCard');
+    var progressBar = document.getElementById('progressBar');
+    var logBody = document.getElementById('logBody');
+    var summary = document.getElementById('summary');
+    var spinner = document.getElementById('spinner');
+
+    function csrf() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function selectedLanguages() {
+        return Array.prototype.slice
+            .call(document.querySelectorAll('.lang-check:checked'))
+            .map(function (el) { return el.value; });
+    }
+
+    function formatDuration(seconds) {
+        if (!isFinite(seconds) || seconds < 0) seconds = 0;
+        var m = Math.floor(seconds / 60), s = Math.round(seconds % 60);
+        return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function refreshEstimate() {
+        var langs = selectedLanguages();
+        var conc = parseInt(document.getElementById('concurrency').value, 10);
+        var pages = langs.length * routes.length;
+        startBtn.disabled = running || pages === 0;
+        clearBtn.disabled = running || langs.length === 0;
+
+        var box = document.getElementById('estimate');
+        if (pages === 0) {
+            box.className = 'text-muted';
+            box.textContent = 'Select at least one language.';
+            return;
+        }
+        var seconds = pages * assumedSeconds() / conc;
+        var warn = seconds > 600;
+        box.className = warn ? 'text-warning-emphasis' : 'text-muted';
+        box.innerHTML = '<strong>' + pages + '</strong> page translations — roughly <strong>'
+            + formatDuration(seconds) + '</strong> at ' + conc + ' at a time.'
+            + (warn ? ' <br><i class="bi bi-exclamation-triangle"></i> That is over ten minutes. '
+                    + 'Consider fewer languages, or raise the concurrency.' : '');
+    }
+
+    function previewUrl(route, language) {
+        return route + (route.indexOf('?') === -1 ? '?' : '&') + 'lang=' + language;
+    }
+
+    function addLogRow(result) {
+        var badge = result.status === 'cached' ? 'success'
+                  : result.status === 'failed' ? 'danger' : 'secondary';
+        // Only cached pages get a link -- a page that failed or was skipped
+        // would open in English, which looks like a broken link rather than
+        // the designed fallback.
+        var pageCell = result.status === 'cached'
+            ? '<a href="' + previewUrl(result.route, result.language) + '" target="_blank" ' +
+              'rel="noopener" title="Open this page in ' + result.language + ' in a new tab">' +
+              '<code>' + result.route + '</code> <i class="bi bi-box-arrow-up-right small"></i></a>'
+            : '<code class="text-muted">' + result.route + '</code>';
+        var tr = document.createElement('tr');
+        tr.dataset.status = result.status;
+        // A row arriving while a filter is on must respect it, otherwise the
+        // grid quietly contradicts the button that is lit.
+        tr.hidden = !rowMatchesFilter(result.status, currentFilter);
+        tr.innerHTML =
+            '<td>' + pageCell + '</td>' +
+            '<td>' + result.language + '</td>' +
+            '<td><span class="badge bg-' + badge + '">' + result.status + '</span> ' +
+            '<span class="text-muted small">' + (result.detail || '') + '</span></td>' +
+            '<td class="text-end text-muted small">' + ((result.ms || 0) / 1000).toFixed(1) + 's</td>';
+        logBody.insertBefore(tr, logBody.firstChild);
+    }
+
+    function tick() {
+        if (!running) return;
+        var elapsed = (Date.now() - startedAt) / 1000;
+        document.getElementById('elapsed').textContent = 'Elapsed ' + formatDuration(elapsed);
+
+        var per = durations.length
+            ? durations.reduce(function (a, b) { return a + b; }, 0) / durations.length / 1000
+            : assumedSeconds();
+        var conc = parseInt(document.getElementById('concurrency').value, 10);
+        var left = (total - completed) * per / conc;
+        document.getElementById('remaining').textContent =
+            durations.length ? 'About ' + formatDuration(left) + ' left ('
+                + per.toFixed(0) + 's per page)' : 'Estimating…';
+        setTimeout(tick, 1000);
+    }
+
+    function updateProgress() {
+        var pct = total ? Math.round(completed / total * 100) : 0;
+        progressBar.style.width = pct + '%';
+        progressBar.textContent = pct + '%';
+        document.getElementById('counts').textContent = completed + ' / ' + total;
+    }
+
+    function warmOne(route, language) {
+        return fetch('{{ url_for("translation_admin.warm") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({ route: route, language: language,
+                                   review: document.getElementById('reviewPass').checked })
+        }).then(function (r) { return r.json(); })
+          .catch(function (err) {
+              return { route: route, language: language, status: 'failed',
+                       detail: String(err), ms: 0 };
+          });
+    }
+
+    function run() {
+        var langs = selectedLanguages();
+        var queue = [];
+        langs.forEach(function (lang) {
+            routes.forEach(function (route) { queue.push({ route: route, language: lang }); });
+        });
+
+        running = true; stopRequested = false;
+        completed = 0; total = queue.length; durations = []; rows = [];
+        pausedUntil = 0; throttled = false;
+        refreshFilterCounts();
+        document.getElementById('csvBtn').disabled = true;
+        tally = { cached: 0, failed: 0, skipped: 0 };
+        startedAt = Date.now();
+        logBody.innerHTML = '';
+        summary.classList.add('d-none');
+        progressCard.classList.remove('d-none');
+        spinner.classList.remove('d-none');
+        document.getElementById('phaseLabel').textContent = 'Translating…';
+        startBtn.disabled = true; clearBtn.disabled = true;
+        stopBtn.classList.remove('d-none');
+        updateProgress(); tick();
+
+        var conc = parseInt(document.getElementById('concurrency').value, 10);
+        var workers = [];
+        activeWorkers = conc;
+
+        function sleep(ms) {
+            return new Promise(function (r) { setTimeout(r, ms); });
+        }
+
+        // Groq's per-minute ceiling is shared across every worker, so backing
+        // off has to be too: one rate-limited page pauses all of them, and the
+        // run drops to one at a time for the rest of the pass. Racing back in
+        // at the same rate just earns another 429.
+        function rateLimitPause(result) {
+            var seconds = 20;
+            var match = /(\d+)s/.exec(result.detail || '');
+            if (match) seconds = Math.min(120, parseInt(match[1], 10) + 2);
+            pausedUntil = Math.max(pausedUntil, Date.now() + seconds * 1000);
+            if (!throttled) {
+                throttled = true;
+                document.getElementById('phaseLabel').textContent =
+                    'Rate limited — slowing to one page at a time';
+            }
+            return seconds;
+        }
+
+        function next() {
+            if (stopRequested || queue.length === 0) return Promise.resolve();
+            var waitFor = pausedUntil - Date.now();
+            if (waitFor > 0) return sleep(Math.min(waitFor, 5000)).then(next);
+            if (throttled && activeWorkers > 1) { activeWorkers -= 1; return Promise.resolve(); }
+            var job = queue.shift();
+            return warmOne(job.route, job.language).then(function (result) {
+                if (result.status === 'failed' && /rate limited/i.test(result.detail || '')) {
+                    var waited = rateLimitPause(result);
+                    if ((job.attempts || 0) < 2) {
+                        job.attempts = (job.attempts || 0) + 1;
+                        queue.unshift(job);   // put it back; it was not a bad page
+                        return sleep(waited * 1000).then(next);
+                    }
+                }
+                completed += 1;
+                result.finished_at = new Date().toISOString();
+                rows.push(result);
+                document.getElementById('csvBtn').disabled = false;
+                if (result.ms) durations.push(result.ms);
+                tally[result.status] = (tally[result.status] || 0) + 1;
+                addLogRow(result);
+                refreshFilterCounts();
+                updateProgress();
+                return next();
+            });
+        }
+
+        for (var i = 0; i < conc; i++) workers.push(next());
+
+        Promise.all(workers).then(function () {
+            running = false;
+            spinner.classList.add('d-none');
+            stopBtn.classList.add('d-none');
+            document.getElementById('phaseLabel').textContent =
+                stopRequested ? 'Stopped' : 'Done';
+            progressBar.classList.remove('progress-bar-animated');
+            document.getElementById('remaining').textContent = '';
+
+            var elapsed = (Date.now() - startedAt) / 1000;
+            summary.className = 'mt-3 alert ' + (tally.failed ? 'alert-warning' : 'alert-success');
+            summary.innerHTML =
+                '<strong>' + tally.cached + '</strong> cached, ' +
+                '<strong>' + (tally.failed || 0) + '</strong> not translated, ' +
+                '<strong>' + (tally.skipped || 0) + '</strong> skipped, in ' +
+                formatDuration(elapsed) + '.' +
+                (tally.failed ? '<br>Pages that were not translated will serve in English — ' +
+                                'that is the designed failure, not a broken page.' : '');
+            summary.classList.remove('d-none');
+            refreshEstimate();
+        });
+    }
+
+    function rowMatchesFilter(status, filter) {
+        if (filter === 'all') return true;
+        if (filter === 'cached') return status === 'cached';
+        // 'Failed' means anything that did not end up cached -- a skipped page
+        // is not a success, and hiding it under a third button nobody presses
+        // is how a page goes missing from a demo.
+        return status !== 'cached';
+    }
+
+    function applyFilter(filter) {
+        currentFilter = filter;
+        Array.prototype.forEach.call(logBody.children, function (tr) {
+            tr.hidden = !rowMatchesFilter(tr.dataset.status, filter);
+        });
+        Array.prototype.forEach.call(
+            document.querySelectorAll('[data-filter]'), function (btn) {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+    }
+
+    function refreshFilterCounts() {
+        var cached = 0;
+        rows.forEach(function (r) { if (r.status === 'cached') cached += 1; });
+        document.getElementById('countAll').textContent = rows.length;
+        document.getElementById('countCached').textContent = cached;
+        document.getElementById('countFailed').textContent = rows.length - cached;
+    }
+
+    function csvCell(value) {
+        var s = (value === null || value === undefined) ? '' : String(value);
+        // Quote anything that would otherwise break a field, and double any
+        // quote inside it -- RFC 4180, which is what Excel expects.
+        return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+
+    function buildCsv() {
+        var header = ['page', 'language', 'status', 'detail', 'seconds',
+                      'page_bytes', 'finished_at', 'preview_url'];
+        var lines = [header.join(',')];
+        rows.filter(function (r) {
+            return rowMatchesFilter(r.status, currentFilter);
+        }).forEach(function (r) {
+            lines.push([
+                csvCell(r.route),
+                csvCell(r.language),
+                csvCell(r.status),
+                csvCell(r.detail || ''),
+                csvCell(((r.ms || 0) / 1000).toFixed(1)),
+                csvCell(r.bytes || ''),
+                csvCell(r.finished_at || ''),
+                csvCell(r.status === 'cached'
+                    ? window.location.origin + previewUrl(r.route, r.language) : '')
+            ].join(','));
+        });
+        return lines.join('\r\n');
+    }
+
+    Array.prototype.forEach.call(
+        document.querySelectorAll('[data-filter]'), function (btn) {
+            btn.addEventListener('click', function () { applyFilter(btn.dataset.filter); });
+        });
+
+    document.getElementById('csvBtn').addEventListener('click', function () {
+        if (!rows.length) return;
+        // Export what the grid is showing. Filtering to Failed and getting the
+        // whole run back would be a nasty surprise.
+        var langs = [];
+        rows.forEach(function (r) {
+            if (langs.indexOf(r.language) === -1) langs.push(r.language);
+        });
+        var stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
+        var suffix = currentFilter === 'all' ? '' : '-' + currentFilter;
+        var name = 'translation-run-' + langs.join('-') + suffix + '-' + stamp + '.csv';
+
+        // The BOM is not decoration: without it Excel reads the file as the
+        // system code page and mangles every accented character in the
+        // translations, which is most of what this file is for.
+        var blob = new Blob(['\ufeff' + buildCsv()], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+    });
+
+    document.querySelectorAll('.lang-check').forEach(function (el) {
+        el.addEventListener('change', refreshEstimate);
+    });
+    document.getElementById('concurrency').addEventListener('change', refreshEstimate);
+    document.getElementById('reviewPass').addEventListener('change', refreshEstimate);
+
+    startBtn.addEventListener('click', run);
+    stopBtn.addEventListener('click', function () {
+        stopRequested = true;
+        document.getElementById('phaseLabel').textContent = 'Finishing current pages…';
+    });
+
+    clearBtn.addEventListener('click', function () {
+        var langs = selectedLanguages();
+        if (!langs.length) return;
+        clearBtn.disabled = true;
+        fetch('{{ url_for("translation_admin.clear") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({ languages: langs })
+        }).then(function (r) { return r.json(); })
+          .then(function (data) {
+              progressCard.classList.remove('d-none');
+              spinner.classList.add('d-none');
+              document.getElementById('phaseLabel').textContent = 'Cache cleared';
+              summary.className = 'mt-3 alert alert-secondary';
+              summary.textContent = data.error
+                  ? 'Could not clear: ' + data.error
+                  : 'Removed ' + data.deleted + ' cached page(s) for ' + langs.join(', ') + '.';
+              summary.classList.remove('d-none');
+          })
+          .catch(function () {})
+          .then(function () { refreshEstimate(); });
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+        if (running) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    refreshEstimate();
+})();
+</script>
+{% endblock %}

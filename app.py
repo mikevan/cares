@@ -12,17 +12,12 @@ from services.reports import FinancialReports
 from datetime import date 
 from config import is_production, resolve_secret, parse_bool_env
 from extensions import limiter
-from blueprints.auth_routes import auth_bp, init_database
-from blueprints.member_routes import members_bp
-from blueprints.user_routes import users_bp
-from blueprints.chart_of_accounts import chart_of_accounts_bp
-from blueprints.transaction_routes import transactions_bp
-from blueprints.project_routes import projects_bp
-from blueprints.report_routes import reports_bp
-from blueprints.settings_routes import settings_bp
-from blueprints.ap_routes import ap_bp
-from blueprints.audit_routes import audit_bp
-from services.translation_service import translate_response, detect_language, SKIP_ROUTES
+from blueprints import register_blueprints
+from blueprints.auth_routes import init_database
+from services.translation_service import (
+    translate_response, detect_language, SUPPORTED_LANGUAGES,
+    is_translatable_route, page_size_limit,
+)
 from services.audit_context import set_current_actor, clear_current_actor
 from services.tenancy import (
     set_current_organization, set_current_organization_scope,
@@ -101,16 +96,25 @@ def inject_branding():
 
 login_manager.login_view = 'auth.login' 
 
-app.register_blueprint(auth_bp)
-app.register_blueprint(members_bp)
-app.register_blueprint(users_bp)
-app.register_blueprint(chart_of_accounts_bp)
-app.register_blueprint(transactions_bp)
-app.register_blueprint(projects_bp)
-app.register_blueprint(reports_bp)
-app.register_blueprint(settings_bp)
-app.register_blueprint(ap_bp)
-app.register_blueprint(audit_bp)
+# One list, shared with tests/conftest.py -- see blueprints/__init__.py.
+register_blueprints(app)
+
+# Say once, at startup, what the translation pipeline is actually configured to
+# do. Every one of these is an environment variable, and the failure mode for
+# all of them is silence -- a page that quietly serves in English looks the
+# same whether the feature is off, the key is missing, or the model refused.
+if ENABLE_TRANSLATION:
+    import os as _os
+    app.logger.warning(
+        'Translation ON | mode=%s | review=%s | page limit=%s chars | model=%s | key=%s',
+        (_os.environ.get('TRANSLATION_MODE') or 'segments'),
+        (_os.environ.get('ENABLE_TRANSLATION_REVIEW') or 'true'),
+        format(page_size_limit(), ','),
+        _os.environ.get('GROQ_TRANSLATION_MODEL', 'openai/gpt-oss-20b'),
+        'set' if _os.environ.get('GROQ_API_KEY') else 'MISSING — every page will serve in English',
+    )
+else:
+    app.logger.warning('Translation OFF (ENABLE_TRANSLATION is not set)')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -315,19 +319,54 @@ def index():
 def maybe_translate(response):
     """Automatically translate HTML responses for non-English browsers.
 
-    Off by default (see ENABLE_TRANSLATION above) -- this sends the full
-    rendered page, including live financial data and member/donor PII, to
-    a third-party translation API. A chapter must explicitly set
-    ENABLE_TRANSLATION=true (and GROQ_API_KEY) to turn it on.
+    Off by default (see ENABLE_TRANSLATION above) -- this sends the rendered
+    page, including member/donor PII, to a third-party translation API. A
+    chapter must explicitly set ENABLE_TRANSLATION=true (and GROQ_API_KEY)
+    to turn it on.
+
+    Currency amounts and GL account numbers are masked before the call and
+    restored afterwards, so no figure on the page is ever at the model's
+    mercy; see services/translation_masking.py. Everything else on the page
+    -- names, addresses, memos -- still leaves the building, which is the
+    part a chapter is consenting to when it sets the flag.
+
+    Runs synchronously. A cache miss costs a full API round trip inside the
+    response cycle, so the first view of each page in each language is slow
+    and every later view is not.
     """
     if not ENABLE_TRANSLATION:
         return response
     if 'text/html' not in response.content_type:
         return response
-    if request.path in SKIP_ROUTES or request.path.startswith('/static'):
+    # Exempt route trees -- the audit trail above all -- are served exactly as
+    # stored. This is checked before the ?lang= override so that nothing an
+    # administrator can type in a URL translates an evidence page.
+    if not is_translatable_route(request.path):
+        return response
+    # Only finished pages. Without this a redirect to /login, or an error page,
+    # would be sent to Groq -- easy to trigger now that ?lang= can ask for a
+    # translation on any URL.
+    if response.status_code != 200:
         return response
 
-    lang = detect_language(request.headers.get('Accept-Language', ''))
+    # Set this before the language check, not after: the response for an
+    # English browser varies by Accept-Language too, and a shared cache that
+    # was not told so would hand the English page to the next Spanish reader.
+    response.vary.add('Accept-Language')
+
+    # An explicit ?lang= wins over the browser's preference. This is what makes
+    # a translated page reviewable without changing your browser's language
+    # settings and changing them back -- the Site Translation screen links each
+    # warmed page this way. An unknown or absent value falls through to the
+    # header, so normal readers are unaffected.
+    requested = (request.args.get('lang') or '').strip().lower()
+    if requested in SUPPORTED_LANGUAGES:
+        lang = requested
+    elif requested == 'en':
+        return response
+    else:
+        lang = detect_language(request.headers.get('Accept-Language', ''))
+
     if lang == 'en':
         return response
 
@@ -338,7 +377,6 @@ def maybe_translate(response):
     except Exception as exc:
         app.logger.warning(f'Translation middleware error: {exc}')
 
-    response.headers['Vary'] = 'Accept-Language'
     return response
 
 if __name__ == '__main__':

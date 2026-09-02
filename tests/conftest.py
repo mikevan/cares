@@ -157,17 +157,9 @@ def app(postgres_container):
     """
     print("Setting up Flask application for testing...")
     
-    # Import blueprints
-    from blueprints.auth_routes import auth_bp
-    from blueprints.member_routes import members_bp
-    from blueprints.user_routes import users_bp
-    from blueprints.chart_of_accounts import chart_of_accounts_bp
-    from blueprints.transaction_routes import transactions_bp
-    from blueprints.project_routes import projects_bp
-    from blueprints.report_routes import reports_bp
-    from blueprints.settings_routes import settings_bp
-    from blueprints.ap_routes import ap_bp
-    from blueprints.audit_routes import audit_bp
+    # Blueprints come from the same registry production uses, so the fixture
+    # cannot be missing one -- see blueprints/__init__.py.
+    from blueprints import register_blueprints
     
     # Create Flask app
     app = Flask(__name__, 
@@ -294,17 +286,7 @@ def app(postgres_container):
     def clear_tenant_context(exc=None):
         clear_current_organization()
 
-    # Register blueprints
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(members_bp)
-    app.register_blueprint(users_bp)
-    app.register_blueprint(chart_of_accounts_bp)
-    app.register_blueprint(transactions_bp)
-    app.register_blueprint(projects_bp)
-    app.register_blueprint(reports_bp)
-    app.register_blueprint(settings_bp)
-    app.register_blueprint(ap_bp)
-    app.register_blueprint(audit_bp)
+    register_blueprints(app)
 
     @app.route('/')
     def index():

@@ -101,7 +101,14 @@ DERIVED_ORG_TABLES = [
 #                     exists -- a login that cannot find the user by name
 #                     cannot log anyone in. Scoped at the route layer.
 #   currencies        reference data, identical for everyone.
-#   translation_cache keyed by route and content hash, holds no org data.
+#   translation_cache DOES hold org data -- each row is a whole rendered page,
+#                     financial figures and member names included. It is
+#                     unprotected because the key already isolates it: the
+#                     content hash is taken over the page itself, so a row is
+#                     only ever readable by a request that rendered byte-identical
+#                     HTML, which for two different councils means the page held
+#                     nothing of either one's. Revisit this if the key ever stops
+#                     covering the whole page body.
 #   usage_events      vendor telemetry. The V2 design has a SEPARATE,
 #                     closed-source application reading this with its own
 #                     read-only role, deliberately ACROSS organizations, to

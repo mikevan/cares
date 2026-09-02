@@ -189,6 +189,26 @@ def numeric_signature(text: str) -> list:
     return sorted(re.findall(r'\d+', bare))
 
 
+# Chart-of-accounts and account dropdowns render "1420 - Furniture & Fixtures".
+# The model reliably translates the label and drops the code, because the code
+# is not language. Seventy strings on one page came back that way.
+#
+# The code is the page's own text, so it is restored rather than argued about.
+# Only when doing so makes the numbers match exactly is the repair accepted --
+# it can rescue a dropped prefix, never invent or move a number.
+_LEADING_CODE_RE = re.compile(r'^\s*(\d[\w.]*)\s*[-\u2013\u2014:]\s+')
+
+
+def _repair_leading_code(source: str, translated: str) -> str:
+    """Put back an identifier the model dropped from the front of a string."""
+    match = _LEADING_CODE_RE.match(source)
+    if not match:
+        return translated
+    if match.group(1) in translated or _LEADING_CODE_RE.match(translated):
+        return translated
+    return match.group(0) + translated.lstrip()
+
+
 def delocalise(segment: dict, translated: str, report: dict | None = None):
     """Put this string's global placeholders back, or None if it is untrustworthy.
 
@@ -228,6 +248,13 @@ def delocalise(segment: dict, translated: str, report: dict | None = None):
     # the round trip exactly. This is the guard that replaced masking them.
     sent_numbers = numeric_signature(segment.get('sent', ''))
     back_numbers = numeric_signature(translated)
+
+    if back_numbers != sent_numbers:
+        repaired = _repair_leading_code(segment.get('sent', ''), translated)
+        if repaired is not translated and numeric_signature(repaired) == sent_numbers:
+            translated = repaired
+            back_numbers = sent_numbers
+
     if back_numbers != sent_numbers:
         _note('the numbers changed: sent %s, got %s'
               % (sent_numbers or 'none', back_numbers or 'none'))

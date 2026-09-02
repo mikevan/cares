@@ -361,3 +361,39 @@ def test_an_invented_number_is_still_rejected():
 def test_plain_angle_brackets_in_prose_are_not_mistaken_for_markup():
     segment = _one_segment('Budget under 5 percent')
     assert delocalise(segment, 'Presupuesto < 5 por ciento') is not None
+
+
+# ---------------------------------------------------------------------------
+# Account codes dropped from the front of a label
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('source,translated,expected', [
+    ('1420 - Furniture &amp; Fixtures', 'Mobiliario y Equipo', '1420 - Mobiliario y Equipo'),
+    ('5810 - Depreciation', 'Depreciación', '5810 - Depreciación'),
+    ('1010 - Operating Checking Account', 'Cuenta Corriente Operativa',
+     '1010 - Cuenta Corriente Operativa'),
+])
+def test_a_dropped_account_code_is_restored(source, translated, expected):
+    """The code is the page's own text, so it goes back rather than failing."""
+    assert delocalise(_one_segment(source), translated) == expected
+
+
+def test_a_kept_account_code_is_left_alone():
+    assert delocalise(_one_segment('5810 - Depreciation'),
+                      '5810 - Depreciación') == '5810 - Depreciación'
+
+
+def test_repair_never_rescues_a_changed_code():
+    """5810 coming back as 5820 is not a dropped prefix; it is a wrong number."""
+    assert delocalise(_one_segment('5810 - Depreciation'), '5820 - Depreciación') is None
+
+
+def test_repair_never_rescues_a_shifted_row():
+    """The real drift: string N answered with string N+12's content and code."""
+    assert delocalise(_one_segment('1010 - Operating Checking Account'),
+                      '1310 - Inversiones a Corto Plazo') is None
+
+
+def test_repair_does_not_touch_strings_without_a_leading_code():
+    assert delocalise(_one_segment('Membership Dues'), 'Cuotas de Membresía') \
+        == 'Cuotas de Membresía'
